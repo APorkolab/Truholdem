@@ -3,6 +3,7 @@ package com.truholdem.model;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 public class Deck {
     private final List<Card> cards = new LinkedList<>();
@@ -27,7 +28,7 @@ public class Deck {
         if (!cards.isEmpty()) {
             return cards.remove(0);
         }
-        return null;
+        throw new NoSuchElementException("The deck is empty. Cannot draw a card.");
     }
 
     // A pakliban maradt kártyák számának lekérdezése
