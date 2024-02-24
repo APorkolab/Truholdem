@@ -89,4 +89,11 @@ public class GameStatus {
     public void setCommunityCards(List<Card> communityCards) {
         this.communityCards = communityCards;
     }
+
+    public void addCardToCommunity(Card card) {
+        List<Card> currentCards = this.getCommunityCards();
+        currentCards.add(card);
+        this.setCommunityCards(currentCards);
+    }
+
 }

@@ -112,15 +112,14 @@ public class PokerGameService {
     private void performTurn() {
         deck.drawCard(); // Burn
         Card turnCard = deck.drawCard(); // Draw the turn card
-        gameStatus.getCommunityCards().add(turnCard); // Add the turn card to the community cards
+        gameStatus.addCardToCommunity(turnCard); // Add the turn card to the community cards using the new method
     }
 
     private void performRiver() {
         deck.drawCard(); // Burn
         Card riverCard = deck.drawCard(); // Draw the river card
-        gameStatus.getCommunityCards().add(riverCard); // Add the river card to the community cards
+        gameStatus.addCardToCommunity(riverCard); // Add the river card to the community cards using the new method
     }
-
 
     // Játékos tétje és passzolása
     public boolean playerBet(String playerId, int amount) {
