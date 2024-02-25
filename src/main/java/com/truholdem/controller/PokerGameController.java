@@ -1,8 +1,8 @@
 package com.truholdem.controller;
 
 import com.truholdem.model.GameStatus;
+import com.truholdem.model.Player;
 import com.truholdem.service.PokerGameService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,10 +53,11 @@ public class PokerGameController {
 
     @PostMapping("/fold")
     public ResponseEntity<String> playerFold(@RequestParam String playerId) {
-        if (pokerGameService.playerFold(playerId)) {
+        boolean foldResult = pokerGameService.playerFold(playerId);
+        if (foldResult) {
             return ResponseEntity.ok("Player folded successfully.");
         } else {
-            return ResponseEntity.badRequest().body("Folding failed.");
+            return ResponseEntity.badRequest().body("Folding failed or player already folded.");
         }
     }
 

@@ -64,7 +64,7 @@ public class Player {
         return currentBet;
     }
 
-    public boolean isFolded() {
+    public boolean isFolded(String id) {
         return folded;
     }
 

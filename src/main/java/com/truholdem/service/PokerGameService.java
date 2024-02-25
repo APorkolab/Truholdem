@@ -33,9 +33,9 @@ public class PokerGameService {
     public GameStatus startGame() {
         deck.resetDeck();
         registerPlayer("Anna");
-        registerPlayer("Béla");
-        registerPlayer("Cili");
-        registerPlayer("Juli");
+        registerPlayer("BotBéla");
+        registerPlayer("BotCili");
+        registerPlayer("BotJuli");
         dealInitialCards();
         gameStatus.setPhase(GameStatus.GamePhase.PRE_FLOP);
         gameStarted = true;
@@ -107,18 +107,21 @@ public class PokerGameService {
             flop.add(deck.drawCard());
         }
         gameStatus.setCommunityCards(flop);
+        makeBotDecisions();
     }
 
     private void performTurn() {
         deck.drawCard(); // Burn
-        Card turnCard = deck.drawCard(); // Draw the turn card
-        gameStatus.addCardToCommunity(turnCard); // Add the turn card to the community cards using the new method
+        Card turnCard = deck.drawCard();
+        gameStatus.addCardToCommunity(turnCard);
+        makeBotDecisions();
     }
 
     private void performRiver() {
         deck.drawCard(); // Burn
-        Card riverCard = deck.drawCard(); // Draw the river card
-        gameStatus.addCardToCommunity(riverCard); // Add the river card to the community cards using the new method
+        Card riverCard = deck.drawCard();
+        gameStatus.addCardToCommunity(riverCard);
+        makeBotDecisions();
     }
 
     // Játékos tétje és passzolása
@@ -137,16 +140,15 @@ public class PokerGameService {
 
     public boolean playerFold(String playerId) {
         Player player = findPlayerById(playerId);
-        if (gameStarted && player != null) {
+        if (player != null && !player.isFolded(playerId)) {
             player.setFolded(true);
             checkForEarlyWin();
             return true;
         }
         return false;
     }
-
     private void checkForEarlyWin() {
-        long activePlayers = gameStatus.getPlayers().stream().filter(p -> !p.isFolded()).count();
+        long activePlayers = gameStatus.getPlayers().stream().filter(p -> !p.isFolded(p.getId())).count();
         if (activePlayers == 1) {
             endGameEarly();
         }
@@ -154,7 +156,7 @@ public class PokerGameService {
 
     private void endGameEarly() {
         Player winner = gameStatus.getPlayers().stream()
-                .filter(p -> !p.isFolded())
+                .filter(p -> !p.isFolded(p.getId()))
                 .findFirst()
                 .orElse(null);
         if (winner != null) {
@@ -180,7 +182,7 @@ public class PokerGameService {
     private boolean areAllBetsEqual() {
         int expectedBet = currentBet;
         return gameStatus.getPlayers().stream()
-                .filter(p -> !p.isFolded())
+                .filter(p -> !p.isFolded(p.getId()))
                 .allMatch(p -> p.getCurrentBet() == expectedBet);
     }
 
@@ -215,7 +217,7 @@ public class PokerGameService {
     private String determineWinner() {
         HandEvaluator evaluator = new HandEvaluator();
         Optional<Player> winner = gameStatus.getPlayers().stream()
-                .filter(player -> !player.isFolded())
+                .filter(player -> !player.isFolded(player.getId()))
                 .max(Comparator.comparing(player -> {
                     HandResult handResult = evaluator.evaluate(player.getHand(), gameStatus.getCommunityCards());
                     return handResult.getHandStrength();
@@ -253,6 +255,24 @@ public class PokerGameService {
                 .filter(player -> player.getId().equals(playerId))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private void makeBotDecisions() {
+        Random random = new Random();
+        gameStatus.getPlayers().stream()
+                .filter(player -> player.getId().startsWith("Bot"))
+                .forEach(player -> {
+                    if (random.nextBoolean()) {
+                        player.setFolded(true);
+                        playerFold(player.getId());
+                    } else {
+                        // Egyszerű logika: a botok az aktuális tét 1-2x-ese közötti összeget tesznek meg
+                        int betAmount = currentBet == 0 ? 10 : currentBet + random.nextInt(currentBet);
+                        player.setCurrentBet(betAmount);
+                        playerBet(player.getId(), betAmount);
+                        gameStatus.setCurrentPot(pot + betAmount);
+                    }
+                });
     }
 
 
