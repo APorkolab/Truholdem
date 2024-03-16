@@ -1,0 +1,13 @@
+<!-- register-players.component.html -->
+<div class="container">
+	<h2>Regisztráció</h2>
+	<form (ngSubmit)="onSubmit()" #playerForm="ngForm">
+		<div *ngFor="let player of players; let i = index">
+			<input type="text" [(ngModel)]="player.name" name="playerName{{i}}" placeholder="Játékos neve">
+			<input type="number" [(ngModel)]="player.startingChips" name="startingChips{{i}}" placeholder="Kezdő zsetonok">
+			<input type="checkbox" [(ngModel)]="player.isBot" name="isBot{{i}}"> Bot?
+		</div>
+		<button type="submit">Regisztráció</button>
+	</form>
+	<button (click)="addPlayer()">Játékos hozzáadása</button>
+</div>

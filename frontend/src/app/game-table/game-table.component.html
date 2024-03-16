@@ -1,0 +1,24 @@
+<!-- game-table.component.html -->
+<div class="game-table">
+	<div class="player" *ngFor="let player of players; let i = index"
+		[ngClass]="{'user': player.isUser, 'left': i === 1, 'top': i === 2, 'right': i === 3}">
+		<div *ngFor="let card of player.cards">
+			<img *ngIf="gamePhase !== 'preFlop' || player.isUser; else backCard" [src]="getCardImage(card)"
+				[alt]="card.rank + ' of ' + card.suit">
+			<ng-template #backCard><img src="/assets/cards/back.png" alt="Card Back"></ng-template>
+		</div>
+	</div>
+
+	<div class="community-cards">
+		<div *ngFor="let card of communityCards">
+			<img [src]="getCardImage(card)" [alt]="card.rank + ' of ' + card.suit">
+		</div>
+	</div>
+
+	<div class="actions">
+		<button *ngIf="gamePhase === 'preFlop'" (click)="dealFlop()">Deal Flop</button>
+		<button *ngIf="gamePhase === 'flop'" (click)="dealTurn()">Deal Turn</button>
+		<button *ngIf="gamePhase === 'turn'" (click)="dealRiver()">Deal River</button>
+		<button *ngIf="gamePhase === 'river'" (click)="endGame()">End Game</button>
+	</div>
+</div>

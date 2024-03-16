@@ -1,0 +1,27 @@
+/* game-table.component.css */
+.game-table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.player {
+  display: flex;
+  justify-content: center;
+}
+
+.left,
+.right,
+.top,
+.user {
+  margin: 10px;
+}
+
+.community-cards {
+  display: flex;
+  margin: 20px 0;
+}
+
+.actions {
+  margin-top: 20px;
+}
