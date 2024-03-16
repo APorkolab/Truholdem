@@ -6,6 +6,7 @@
 			<input type="text" [(ngModel)]="player.name" name="playerName{{i}}" placeholder="Játékos neve">
 			<input type="number" [(ngModel)]="player.startingChips" name="startingChips{{i}}" placeholder="Kezdő zsetonok">
 			<input type="checkbox" [(ngModel)]="player.isBot" name="isBot{{i}}"> Bot?
+			<button (click)="removePlayer(i)">Remove</button>
 		</div>
 		<button type="submit">Regisztráció</button>
 	</form>

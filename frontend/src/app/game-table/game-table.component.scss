@@ -1,25 +1,86 @@
-/* game-table.component.css */
+.left,
+.top,
+.right,
+.user {
+  position: absolute;
+}
+
+
 .game-table {
   display: flex;
   flex-direction: column;
+  /* Módosítva 'row'-ról 'column'-ra */
   align-items: center;
+  justify-content: flex-start;
+  /* Alapértelmezett igazítás a flex-start-ra, hogy a közösségi kártyák a tetején legyenek */
+  background-color: #006400;
+  padding: 20px;
+  border-radius: 10px;
+  position: relative;
+  width: 100%;
+  height: 100vh;
 }
 
+
 .player {
-  display: flex;
+  position: absolute;
+  display: flexbox;
+  flex-direction: row;
+  /* A kártyák egymás mellett legyenek vízszintesen */
   justify-content: center;
 }
 
-.left,
-.right,
-.top,
+.left {
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.right {
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.top {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .user {
-  margin: 10px;
+  bottom: 20px;
+  /* A fenti 0-ról módosítva 20px-re a kívánt helyre kerülés érdekében */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+/* A játékos kártyák vízszintes elrendezéséhez */
+.player {
+  display: flex;
+  // flex-direction: column;
+  /* Itt már 'column', hogy függőlegesen jelenjenek meg a kártyák */
+  align-items: center;
+  bottom: 0;
+  // transform: translateX(-50%);
+}
+
+/* Kártyák és közösségi kártyák stílusa */
+.card,
+.community-cards img {
+  border: 1px solid #000;
+  /* Fekete keret */
+  border-radius: 5px;
+  margin: 0 10px;
+  /* Több térköz a kártyák között */
+  background-color: #ffff;
 }
 
 .community-cards {
   display: flex;
-  margin: 20px 0;
+  justify-content: center;
+  // margin: 20px 0;
 }
 
 .actions {

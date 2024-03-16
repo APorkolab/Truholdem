@@ -1,24 +1,41 @@
-<!-- game-table.component.html -->
 <div class="game-table">
-	<div class="player" *ngFor="let player of players; let i = index"
-		[ngClass]="{'user': player.isUser, 'left': i === 1, 'top': i === 2, 'right': i === 3}">
-		<div *ngFor="let card of player.cards">
-			<img *ngIf="gamePhase !== 'preFlop' || player.isUser; else backCard" [src]="getCardImage(card)"
-				[alt]="card.rank + ' of ' + card.suit">
-			<ng-template #backCard><img src="/assets/cards/back.png" alt="Card Back"></ng-template>
+	<!-- Az opcionális láncolás használata az esetleges undefined értékek kezelésére -->
+	<div *ngFor="let player of game?.players; let i = index" [ngClass]="{
+        'user': player.id === 'yourUserId', 
+        'left': i === 0, 
+        'top': i === 1, 
+        'right': i === 2
+      }" class="player">
+
+		<!-- Kártyák vízszintes elrendezése -->
+		<div *ngFor="let card of player.hand" class="card">
+			<img *ngIf="game?.phase !== 'PRE_FLOP' || player.id === 'yourUserId'; else backCard" [src]="getCardImage(card)"
+				[alt]="card.value + ' of ' + card.suit" class="card-image">
+			<ng-template #backCard>
+				<img src="../../assets/cards/back.png" alt="Card Back" class="card-image">
+			</ng-template>
+		</div>
+
+		<!-- Játékos információk -->
+		<div class="player-info">
+			<span>{{ player.name || 'Anonymous' }}</span>
+			<span>Chips: {{ player.chips }}</span>
+			<span *ngIf="player.folded">Folded</span>
 		</div>
 	</div>
 
+	<!-- Közösségi kártyák -->
 	<div class="community-cards">
-		<div *ngFor="let card of communityCards">
-			<img [src]="getCardImage(card)" [alt]="card.rank + ' of ' + card.suit">
+		<div *ngFor="let card of game?.communityCards" class="card">
+			<img [src]="getCardImage(card)" [alt]="card.value + ' of ' + card.suit" class="card-image">
 		</div>
 	</div>
 
+	<!-- Játék akciók -->
 	<div class="actions">
-		<button *ngIf="gamePhase === 'preFlop'" (click)="dealFlop()">Deal Flop</button>
-		<button *ngIf="gamePhase === 'flop'" (click)="dealTurn()">Deal Turn</button>
-		<button *ngIf="gamePhase === 'turn'" (click)="dealRiver()">Deal River</button>
-		<button *ngIf="gamePhase === 'river'" (click)="endGame()">End Game</button>
+		<button *ngIf="game?.phase === 'PRE_FLOP'" (click)="dealFlop()">Deal Flop</button>
+		<button *ngIf="game?.phase === 'FLOP'" (click)="dealTurn()">Deal Turn</button>
+		<button *ngIf="game?.phase === 'TURN'" (click)="dealRiver()">Deal River</button>
+		<button *ngIf="game?.phase === 'RIVER'" (click)="endGame()">End Game</button>
 	</div>
 </div>

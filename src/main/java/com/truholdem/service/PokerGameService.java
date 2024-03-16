@@ -73,6 +73,8 @@ public class PokerGameService {
             newPlayer.setChips(startingChips);
             if (isBot) {
                 newPlayer.setName("Bot" + playerName); // Bot játékosok esetén a névhez "Bot" előtag hozzáadása
+            } else {
+                newPlayer.setName(playerName);
             }
             gameStatus.addPlayer(newPlayer);
             return true;
