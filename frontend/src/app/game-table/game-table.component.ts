@@ -15,7 +15,7 @@ interface Player {
 @Component({
   selector: 'app-game-table',
   templateUrl: './game-table.component.html',
-  styleUrls: ['./game-table.component.css']
+  styleUrls: ['./game-table.component.scss']
 })
 export class GameTableComponent implements OnInit {
   gamePhase: string = 'preFlop'; // Kezdeti fázis

@@ -11,7 +11,7 @@ interface PlayerInfo {
 @Component({
   selector: 'app-register-players',
   templateUrl: './register-players.component.html',
-  styleUrls: ['./register-players.component.css']
+  styleUrls: ['./register-players.component.scss']
 })
 export class RegisterPlayersComponent {
   players: PlayerInfo[] = [
