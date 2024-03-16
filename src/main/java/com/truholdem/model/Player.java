@@ -5,6 +5,7 @@ import java.util.List;
 
 public class Player {
     private String id;
+    private String name;
     private List<Card> hand = new ArrayList<>();
     private int chips = 1000; // Kezdő zsetonok
     private int currentBet = 0; // Jelenlegi tét
@@ -14,13 +15,13 @@ public class Player {
         this.id = id;
     }
 
-    // Tét emelése validációval
+    // Tét emelése
     public void placeBet(int amount) {
-        if (amount < 0 || amount > chips) {
-            throw new IllegalArgumentException("Invalid bet amount.");
+        if (amount > chips) {
+            throw new IllegalArgumentException("Not enough chips.");
         }
-        chips -= amount;
         currentBet += amount;
+        chips -= amount;
     }
 
     // Nyert összeg hozzáadása
@@ -43,17 +44,13 @@ public class Player {
         hand.remove(card);
     }
 
-    // Getterek
+    // Getterek és Setterek
     public String getId() {
         return id;
     }
 
     public List<Card> getHand() {
         return new ArrayList<>(hand);
-    }
-
-    public void clearHand() {
-        this.hand.clear();
     }
 
     public int getChips() {
@@ -64,17 +61,39 @@ public class Player {
         return currentBet;
     }
 
-    public boolean isFolded(String id) {
+    public boolean isFolded() {
         return folded;
-    }
-
-    // Setterek
-    public void setId(String id) {
-        this.id = id;
     }
 
     public void setFolded(boolean folded) {
         this.folded = folded;
+    }
+
+    public void clearHand() {
+        hand.clear();
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    // A játékos állapotának JSON formátumban való kiíratása
+    public String toJson() {
+        return String.format("{\"id\":\"%s\", \"hand\":%s, \"chips\":%d, \"currentBet\":%d, \"isFolded\":%b}",
+                id, hand.toString(), chips, currentBet, folded);
+    }
+
+    // További setterek
+    public void setChips(int chips) {
+        this.chips = chips;
+    }
+
+    public void setCurrentBet(int currentBet) {
+        this.currentBet = currentBet;
     }
 
     @Override
@@ -86,13 +105,5 @@ public class Player {
                 ", currentBet=" + currentBet +
                 ", folded=" + folded +
                 '}';
-    }
-
-    public void setChips(int chips) {
-        this.chips = chips;
-    }
-
-    public void setCurrentBet(int currentBet) {
-        this.currentBet = currentBet;
     }
 }

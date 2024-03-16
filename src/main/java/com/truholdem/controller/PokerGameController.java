@@ -1,11 +1,12 @@
 package com.truholdem.controller;
 
 import com.truholdem.model.GameStatus;
-import com.truholdem.model.Player;
+import com.truholdem.model.PlayerInfo;
 import com.truholdem.service.PokerGameService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -18,12 +19,15 @@ public class PokerGameController {
         this.pokerGameService = pokerGameService;
     }
 
-    @GetMapping("/start")
-    public ResponseEntity<GameStatus> startGame() {
-        Optional<GameStatus> gameStatus = Optional.ofNullable(pokerGameService.startGame());
-        return gameStatus.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.badRequest().build());
+    @PostMapping("/start")
+    public ResponseEntity<GameStatus> startGame(@RequestBody List<PlayerInfo> playersInfo) {
+        GameStatus gameStatus = pokerGameService.startGame(playersInfo);
+        if (gameStatus != null) {
+            return ResponseEntity.ok(gameStatus);
+        } else {
+            return ResponseEntity.badRequest().build();
+        }
     }
-
     @GetMapping("/flop")
     public ResponseEntity<GameStatus> dealFlop() {
         Optional<GameStatus> gameStatus = pokerGameService.dealFlop();
@@ -62,8 +66,8 @@ public class PokerGameController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> registerPlayer(@RequestBody String playerId) {
-        if (pokerGameService.registerPlayer(playerId)) {
+    public ResponseEntity<String> registerPlayer(@RequestBody PlayerInfo playerInfo) {
+        if (pokerGameService.registerPlayer(playerInfo.getName(), playerInfo.getStartingChips(), playerInfo.isBot())) {
             return ResponseEntity.ok("Player registered successfully.");
         } else {
             return ResponseEntity.badRequest().body("Player registration failed.");
