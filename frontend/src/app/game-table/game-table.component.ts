@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Game } from '../model/game';
 import { Player } from '../model/player';
 import { Card } from '../model/card';
+import * as bootstrap from 'bootstrap';
 
 
 @Component({
@@ -11,16 +12,18 @@ import { Card } from '../model/card';
   styleUrls: ['./game-table.component.scss']
 })
 export class GameTableComponent implements OnInit {
-  game!: Game; // A Game típusú változó tartalmazza a játék állapotát
+  game!: Game;
+  raiseAmount: number = 0;
+  playerChips: number = 0;
 
   constructor(private http: HttpClient) { }
 
   ngOnInit(): void {
-    this.getGameStatus(); // Kezdő állapot lekérése
+    this.getGameStatus();
   }
+  @ViewChild('raiseModal') raiseModal!: ElementRef;
 
   getGameStatus(): void {
-    // Feltételezve, hogy az API a játék teljes állapotát adja vissza egy Game objektumként
     this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
       next: (data) => {
         this.game = data;
@@ -35,7 +38,6 @@ export class GameTableComponent implements OnInit {
   getCardImage(card: Card): string {
     if (!card) return '../../assets/cards/back.png';
 
-    // Átalakítja a rangot a fájlnév formátumához megfelelően
     let rank = card['value'].toLowerCase();
     switch (rank) {
       case 'two': rank = '2'; break;
@@ -51,11 +53,9 @@ export class GameTableComponent implements OnInit {
       case 'queen': rank = 'queen'; break;
       case 'king': rank = 'king'; break;
       case 'ace': rank = 'ace'; break;
-      // További esetleges átalakítások
       default: break;
     }
 
-    // Átalakítja a színt a fájlnév formátumához megfelelően
     const suit = card['suit'].toLowerCase();
 
     return `../../assets/cards/${rank}_of_${suit}.png`;
@@ -64,32 +64,87 @@ export class GameTableComponent implements OnInit {
   startGame(): void {
     // A játékosok regisztrációs információit ide kellene beilleszteni, ha szükséges
     this.http.post('http://localhost:8080/api/poker/start', []).subscribe(data => {
-      this.getGameStatus(); // Frissítsd az állapotot
+      this.getGameStatus();
     });
   }
 
   dealFlop(): void {
-    this.http.get('http://localhost:8080/api/poker/flop').subscribe(data => {
-      this.getGameStatus(); // Frissítsd az állapotot
+    this.http.get('http://localhost:8080/api/poker/flop').subscribe({
+      next: (data) => {
+        this.getGameStatus();
+      },
+      error: (error) => {
+        console.error('Error during dealing the flop:', error);
+      }
     });
   }
 
   dealTurn(): void {
     this.http.get('http://localhost:8080/api/poker/turn').subscribe(data => {
-      this.getGameStatus(); // Frissítsd az állapotot
+      this.getGameStatus();
     });
   }
 
   dealRiver(): void {
     this.http.get('http://localhost:8080/api/poker/river').subscribe(data => {
-      this.getGameStatus(); // Frissítsd az állapotot
+      this.getGameStatus();
     });
   }
 
   endGame(): void {
     this.http.get('http://localhost:8080/api/poker/end').subscribe(data => {
       alert(`Game ended. Winner is: ${data}`);
-      this.getGameStatus(); // Frissítsd az állapotot
+      this.getGameStatus();
     });
   }
+
+  fold(): void {
+    this.http.post('http://localhost:8080/api/poker/fold', { playerId: 'yourUserId' })
+      .subscribe({
+        next: (data) => {
+          this.getGameStatus();
+        },
+        error: (error) => {
+          console.error('Error during fold:', error);
+        }
+      });
+  }
+
+  raise(raiseAmount: number): void {
+    const currentPlayer = this.game?.players.find(p => p.id === 'yourUserId');
+    if (currentPlayer) {
+      if (raiseAmount > 0 && raiseAmount <= currentPlayer.chips) {
+        this.http.post('http://localhost:8080/api/poker/bet', { playerId: 'yourUserId', amount: raiseAmount })
+          .subscribe({
+            next: (data) => {
+              // A válasz kezelése
+              this.getGameStatus();
+              this.closeRaiseModal(); // Itt használjuk a modális bezárására szolgáló metódust
+            },
+            error: (error) => {
+              console.error('Error during raise:', error);
+            }
+          });
+      } else {
+        // Informáld a játékost, hogy a megadott összeg túl magas
+        alert('The raise amount cannot exceed your chip count.');
+      }
+    }
+  }
+
+  allIn(): void {
+    const currentPlayer = this.game?.players.find(p => p.id === 'yourUserId');
+    if (currentPlayer) {
+      this.raise(currentPlayer.chips);
+    }
+  }
+
+  closeRaiseModal(): void {
+    const modalElement = this.raiseModal.nativeElement;
+    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+    if (modalInstance) {
+      modalInstance.hide();
+    }
+  }
+
 }

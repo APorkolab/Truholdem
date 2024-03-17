@@ -5,14 +5,11 @@
   position: absolute;
 }
 
-
 .game-table {
   display: flex;
   flex-direction: column;
-  /* Módosítva 'row'-ról 'column'-ra */
   align-items: center;
   justify-content: flex-start;
-  /* Alapértelmezett igazítás a flex-start-ra, hogy a közösségi kártyák a tetején legyenek */
   background-color: #006400;
   padding: 20px;
   border-radius: 10px;
@@ -26,7 +23,6 @@
   position: absolute;
   display: flexbox;
   flex-direction: row;
-  /* A kártyák egymás mellett legyenek vízszintesen */
   justify-content: center;
 }
 
@@ -49,40 +45,86 @@
 }
 
 .user {
-  bottom: 20px;
-  /* A fenti 0-ról módosítva 20px-re a kívánt helyre kerülés érdekében */
+  position: absolute;
+  bottom: 2rem;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 2;
+  z-index: 1;
 }
 
-/* A játékos kártyák vízszintes elrendezéséhez */
 .player {
   display: flex;
-  // flex-direction: column;
-  /* Itt már 'column', hogy függőlegesen jelenjenek meg a kártyák */
+  flex-direction: row;
   align-items: center;
-  bottom: 0;
-  // transform: translateX(-50%);
+  z-index: 1;
 }
 
-/* Kártyák és közösségi kártyák stílusa */
+
 .card,
 .community-cards img {
   border: 1px solid #000;
-  /* Fekete keret */
   border-radius: 5px;
-  margin: 0 10px;
-  /* Több térköz a kártyák között */
+  // margin: 0 10px;
   background-color: #ffff;
 }
 
 .community-cards {
   display: flex;
+  flex-direction: row;
   justify-content: center;
-  // margin: 20px 0;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
 }
 
 .actions {
-  margin-top: 20px;
+  position: absolute;
+  top: 3rem;
+  right: 3rem;
+  z-index: 2;
+}
+
+.modal {
+  display: none;
+  /* Hidden by default */
+  position: fixed;
+  /* Stay in place */
+  z-index: 1;
+  /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%;
+  /* Full width */
+  height: 100%;
+  /* Full height */
+  background-color: rgb(0, 0, 0);
+  /* Fallback color */
+  background-color: rgba(0, 0, 0, 0.4);
+  /* Black w/ opacity */
+}
+
+/* Modal Content */
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto;
+  /* 15% from the top and centered */
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+  /* Could be more or less, depending on screen size */
+}
+
+/* Add Animation */
+@keyframes animatetop {
+  from {
+    top: -300px;
+    opacity: 0
+  }
+
+  to {
+    top: 0;
+    opacity: 1
+  }
 }

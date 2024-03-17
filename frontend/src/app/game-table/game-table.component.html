@@ -1,11 +1,11 @@
 <div class="game-table">
 	<!-- Az opcionális láncolás használata az esetleges undefined értékek kezelésére -->
 	<div *ngFor="let player of game?.players; let i = index" [ngClass]="{
-        'user': player.id === 'yourUserId', 
-        'left': i === 0, 
-        'top': i === 1, 
-        'right': i === 2
-      }" class="player">
+      'user': !player.name?.startsWith('Bot'), 
+      'left': i === 0, 
+      'top': i === 1, 
+      'right': i === 2
+    }" class="player">
 
 		<!-- Kártyák vízszintes elrendezése -->
 		<div *ngFor="let card of player.hand" class="card">
@@ -31,8 +31,36 @@
 		</div>
 	</div>
 
-	<!-- Játék akciók -->
 	<div class="actions">
+		<button *ngIf="game?.phase !== 'RIVER'" (click)="fold()">Fold</button>
+		<!-- Raise gomb, ami megnyitja a Bootstrap modal ablakot -->
+		<button *ngIf="game?.phase !== 'RIVER'" data-toggle="modal" data-target="#raiseModal">Raise</button>
+		<button *ngIf="game?.phase !== 'RIVER'" (click)="allIn()">All-In</button>
+
+		<!-- A raise Bootstrap modal -->
+		<div class="modal fade" id="raiseModal" tabindex="-1" role="dialog" aria-labelledby="raiseModalLabel"
+			aria-hidden="true">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="raiseModalLabel">Enter Raise Amount</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<input type="number" class="form-control" [(ngModel)]="raiseAmount" placeholder="Amount"
+							[max]="playerChips" />
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+						<button type="button" class="btn btn-primary" (click)="raise(raiseAmount)">OK</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<span *ngIf="game?.pot">Pots: {{ game.pot }}</span>
 		<button *ngIf="game?.phase === 'PRE_FLOP'" (click)="dealFlop()">Deal Flop</button>
 		<button *ngIf="game?.phase === 'FLOP'" (click)="dealTurn()">Deal Turn</button>
 		<button *ngIf="game?.phase === 'TURN'" (click)="dealRiver()">Deal River</button>
