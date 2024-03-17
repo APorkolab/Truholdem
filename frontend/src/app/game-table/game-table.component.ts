@@ -1,11 +1,10 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Game } from '../model/game';
 import { Player } from '../model/player';
 import { Card } from '../model/card';
-import * as bootstrap from 'bootstrap';
 
-
+declare var bootstrap: any;
 @Component({
   selector: 'app-game-table',
   templateUrl: './game-table.component.html',
@@ -15,13 +14,22 @@ export class GameTableComponent implements OnInit {
   game!: Game;
   raiseAmount: number = 0;
   playerChips: number = 0;
+  currentNonBotPlayerId: string = '';
 
   constructor(private http: HttpClient) { }
 
   ngOnInit(): void {
     this.getGameStatus();
+    this.setCurrentNonBotPlayerId();
   }
   @ViewChild('raiseModal') raiseModal!: ElementRef;
+
+  setCurrentNonBotPlayerId(): void {
+    const nonBotPlayer = this.game.players.find(player => !player.name?.startsWith('Bot'));
+    if (nonBotPlayer) {
+      this.currentNonBotPlayerId = nonBotPlayer.id;
+    }
+  }
 
   getGameStatus(): void {
     this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
@@ -62,7 +70,6 @@ export class GameTableComponent implements OnInit {
   }
 
   startGame(): void {
-    // A játékosok regisztrációs információit ide kellene beilleszteni, ha szükséges
     this.http.post('http://localhost:8080/api/poker/start', []).subscribe(data => {
       this.getGameStatus();
     });
@@ -92,39 +99,57 @@ export class GameTableComponent implements OnInit {
   }
 
   endGame(): void {
-    this.http.get('http://localhost:8080/api/poker/end').subscribe(data => {
-      alert(`Game ended. Winner is: ${data}`);
+    this.http.get<string>('http://localhost:8080/api/poker/end', { responseType: 'text' as 'json' }).subscribe(data => {
+      alert(data);
       this.getGameStatus();
     });
   }
 
   fold(): void {
-    this.http.post('http://localhost:8080/api/poker/fold', { playerId: 'yourUserId' })
-      .subscribe({
-        next: (data) => {
-          this.getGameStatus();
-        },
-        error: (error) => {
-          console.error('Error during fold:', error);
-        }
-      });
+    // Megkeressük az első nem-bot játékost
+    const nonBotPlayer = this.game.players.find(player => !player.name?.startsWith('Bot'));
+
+    if (nonBotPlayer) {
+      const params = new HttpParams().set('playerId', nonBotPlayer.id);
+
+      this.http.post('http://localhost:8080/api/poker/fold', null, { params: params, responseType: 'text' })
+        .subscribe({
+          next: (response) => {
+            console.log("Fold successful", response);
+            this.getGameStatus();
+            this.endGame();
+
+          },
+          error: (error) => {
+            console.error('Error during fold:', error);
+          }
+        });
+    } else {
+      console.error('No non-bot player found');
+    }
   }
 
   raise(raiseAmount: number): void {
-    const currentPlayer = this.game?.players.find(p => p.id === 'yourUserId');
-    if (currentPlayer) {
-      if (raiseAmount > 0 && raiseAmount <= currentPlayer.chips) {
-        this.http.post('http://localhost:8080/api/poker/bet', { playerId: 'yourUserId', amount: raiseAmount })
-          .subscribe({
-            next: (data) => {
-              // A válasz kezelése
-              this.getGameStatus();
-              this.closeRaiseModal(); // Itt használjuk a modális bezárására szolgáló metódust
-            },
-            error: (error) => {
-              console.error('Error during raise:', error);
-            }
-          });
+    const currentPlayerId = this.game?.players.find(player => !player.name?.startsWith('Bot'))?.id;
+    const currentPlayer = this.game?.players.find(player => !player.name?.startsWith('Bot'));
+    if (currentPlayerId && raiseAmount > 0) {
+      // Itt feltételezzük, hogy currentPlayer.chips elérhető és korábban be van állítva
+      if (raiseAmount <= currentPlayer!.chips) {
+        const body = new HttpParams()
+          .set('playerId', currentPlayerId)
+          .set('amount', raiseAmount.toString());
+
+        this.http.post('http://localhost:8080/api/poker/bet', body.toString(), {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        }).subscribe({
+          next: (data) => {
+            // A válasz kezelése
+            this.getGameStatus(); // Frissíti a játék állapotát
+          },
+          error: (error) => {
+            console.error('Error during raise:', error);
+          }
+        });
       } else {
         // Informáld a játékost, hogy a megadott összeg túl magas
         alert('The raise amount cannot exceed your chip count.');
@@ -133,17 +158,9 @@ export class GameTableComponent implements OnInit {
   }
 
   allIn(): void {
-    const currentPlayer = this.game?.players.find(p => p.id === 'yourUserId');
+    const currentPlayer = this.game?.players.find(player => !player.name?.startsWith('Bot'));
     if (currentPlayer) {
       this.raise(currentPlayer.chips);
-    }
-  }
-
-  closeRaiseModal(): void {
-    const modalElement = this.raiseModal.nativeElement;
-    const modalInstance = bootstrap.Modal.getInstance(modalElement);
-    if (modalInstance) {
-      modalInstance.hide();
     }
   }
 
