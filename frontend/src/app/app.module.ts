@@ -8,13 +8,15 @@ import { HttpClientModule } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { GameTableComponent } from './game-table/game-table.component';
+import { RaiseInputComponent } from './raise-input/raise-input.component';
 
 
 @NgModule({
   declarations: [
     AppComponent,
     RegisterPlayersComponent,
-    GameTableComponent
+    GameTableComponent,
+    RaiseInputComponent
   ],
   imports: [
     FormsModule,

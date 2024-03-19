@@ -1,8 +1,10 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Game } from '../model/game';
 import { Player } from '../model/player';
 import { Card } from '../model/card';
+import { RaiseInputComponent } from '../raise-input/raise-input.component'; // A pontos elérési útvonal a projekt struktúrájától függ
+
 
 declare var bootstrap: any;
 @Component({
@@ -15,6 +17,8 @@ export class GameTableComponent implements OnInit {
   raiseAmount: number = 0;
   playerChips: number = 0;
   currentNonBotPlayerId: string = '';
+  @ViewChild(RaiseInputComponent) raiseInputComponent!: RaiseInputComponent;
+
 
   constructor(private http: HttpClient) { }
 
@@ -129,39 +133,14 @@ export class GameTableComponent implements OnInit {
     }
   }
 
-  raise(raiseAmount: number): void {
-    const currentPlayerId = this.game?.players.find(player => !player.name?.startsWith('Bot'))?.id;
-    const currentPlayer = this.game?.players.find(player => !player.name?.startsWith('Bot'));
-    if (currentPlayerId && raiseAmount > 0) {
-      // Itt feltételezzük, hogy currentPlayer.chips elérhető és korábban be van állítva
-      if (raiseAmount <= currentPlayer!.chips) {
-        const body = new HttpParams()
-          .set('playerId', currentPlayerId)
-          .set('amount', raiseAmount.toString());
-
-        this.http.post('http://localhost:8080/api/poker/bet', body.toString(), {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        }).subscribe({
-          next: (data) => {
-            // A válasz kezelése
-            this.getGameStatus(); // Frissíti a játék állapotát
-          },
-          error: (error) => {
-            console.error('Error during raise:', error);
-          }
-        });
-      } else {
-        // Informáld a játékost, hogy a megadott összeg túl magas
-        alert('The raise amount cannot exceed your chip count.');
-      }
-    }
+  showRaiseInput(): void {
+    this.raiseInputComponent.showRaiseInput();
   }
+
 
   allIn(): void {
-    const currentPlayer = this.game?.players.find(player => !player.name?.startsWith('Bot'));
-    if (currentPlayer) {
-      this.raise(currentPlayer.chips);
-    }
+    this.raiseInputComponent.allIn();
   }
+
 
 }
