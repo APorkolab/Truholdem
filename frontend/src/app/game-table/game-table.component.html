@@ -34,7 +34,7 @@
 
 	<div class="actions">
 		<button *ngIf="game?.phase !== 'RIVER'" (click)="fold()">Fold</button>
-		<app-raise-input></app-raise-input>
+		<app-raise-input [game]="game"></app-raise-input>
 		<!-- Game End Modal -->
 		<div class="modal" tabindex="-1" id="gameEndModal">
 			<div class="modal-dialog">
@@ -54,7 +54,7 @@
 			</div>
 		</div>
 
-		<div>Pots: {{ game.currentPot }}</div>
+		<div>Pots: {{ currentPot }}</div>
 		<br>
 		<button *ngIf="game?.phase === 'PRE_FLOP'" (click)="dealFlop()">Deal Flop</button>
 		<button *ngIf="game?.phase === 'FLOP'" (click)="dealTurn()">Deal Turn</button>

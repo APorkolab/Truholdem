@@ -1,7 +1,7 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Player } from './../model/player';
+import { Component, ElementRef, OnInit, Output, ViewChild } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Game } from '../model/game';
-import { Player } from '../model/player';
 import { Card } from '../model/card';
 import { RaiseInputComponent } from '../raise-input/raise-input.component'; // A pontos elérési útvonal a projekt struktúrájától függ
 
@@ -16,6 +16,8 @@ export class GameTableComponent implements OnInit {
   game!: Game;
   raiseAmount: number = 0;
   playerChips: number = 0;
+  currentPot: number = 0;
+  nonBotPlayer: Player | undefined;
   currentNonBotPlayerId: string = '';
   @ViewChild(RaiseInputComponent) raiseInputComponent!: RaiseInputComponent;
 
@@ -23,15 +25,21 @@ export class GameTableComponent implements OnInit {
   constructor(private http: HttpClient) { }
 
   ngOnInit(): void {
+    this.nonBotPlayer = this.game?.players?.find(player => !player.name?.startsWith('Bot'));
+    this.currentPot = this.game?.currentPot || 0;
     this.getGameStatus();
     this.setCurrentNonBotPlayerId();
+
+
   }
+
+
   @ViewChild('raiseModal') raiseModal!: ElementRef;
 
   setCurrentNonBotPlayerId(): void {
-    const nonBotPlayer = this.game.players.find(player => !player.name?.startsWith('Bot'));
-    if (nonBotPlayer) {
-      this.currentNonBotPlayerId = nonBotPlayer.id;
+
+    if (this.nonBotPlayer) {
+      this.currentNonBotPlayerId = this.nonBotPlayer.id;
     }
   }
 
@@ -110,11 +118,9 @@ export class GameTableComponent implements OnInit {
   }
 
   fold(): void {
-    // Megkeressük az első nem-bot játékost
-    const nonBotPlayer = this.game.players.find(player => !player.name?.startsWith('Bot'));
 
-    if (nonBotPlayer) {
-      const params = new HttpParams().set('playerId', nonBotPlayer.id);
+    if (this.nonBotPlayer) {
+      const params = new HttpParams().set('playerId', this.nonBotPlayer.id);
 
       this.http.post('http://localhost:8080/api/poker/fold', null, { params: params, responseType: 'text' })
         .subscribe({

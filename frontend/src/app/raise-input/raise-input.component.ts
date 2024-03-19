@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { Game } from '../model/game';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Player } from '../model/player';
 
 
 @Component({
@@ -9,19 +10,27 @@ import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular
   styleUrls: ['./raise-input.component.scss']
 })
 export class RaiseInputComponent implements OnInit {
+  @Input()
   game!: Game;
+
   isRaiseInputVisible = false;
   raiseAmount = 0;
   maxRaiseAmount = 0;
+  currentPlayer: Player | undefined;
 
   constructor(private http: HttpClient) { }
 
   ngOnInit(): void {
-    this.setMaxRaiseAmount();
+    if (this.game) {
+      this.setMaxRaiseAmount();
+    }
   }
 
   setMaxRaiseAmount(): void {
-    this.maxRaiseAmount = this.game?.players.find(player => !player.name?.startsWith('Bot'))?.chips || 0;
+
+    this.maxRaiseAmount = this.game?.players.find(player => !player.name?.startsWith('Bot'))?.chips || 10;
+    console.log(this.currentPlayer);
+    console.log(this.game?.players);
   }
 
   showRaiseInput(): void {
@@ -37,15 +46,17 @@ export class RaiseInputComponent implements OnInit {
     const currentPlayerId = this.game?.players.find(player => !player.name?.startsWith('Bot'))?.id;
     const currentPlayer = this.game?.players.find(player => !player.name?.startsWith('Bot'));
     if (currentPlayerId && raiseAmount > 0) {
-      // Assume currentPlayer.chips is accessible and previously set
       if (raiseAmount <= currentPlayer!.chips) {
-        const headers = new HttpHeaders().set('Content-Type', 'application/json'); // Adjusted for JSON content type
-        const body = {
-          playerId: currentPlayerId,
-          amount: raiseAmount
-        };
+        const headers = new HttpHeaders({
+          'Content-Type': 'application/x-www-form-urlencoded', // Módosítva az adattípust
+        });
 
-        this.http.post('http://localhost:8080/api/poker/bet', body, { headers }).subscribe({
+        // Az adatokat URL kódolt formában kell elküldeni
+        const body = new HttpParams()
+          .set('playerId', currentPlayerId)
+          .set('amount', raiseAmount.toString());
+
+        this.http.post('http://localhost:8080/api/poker/bet', body.toString(), { headers }).subscribe({
           next: (data) => {
             // Response handling
             this.getGameStatus();
@@ -61,9 +72,8 @@ export class RaiseInputComponent implements OnInit {
   }
 
   allIn(): void {
-    const currentPlayer = this.game?.players.find(player => !player.name?.startsWith('Bot'));
-    if (currentPlayer) {
-      this.raise(currentPlayer.chips);
+    if (this.currentPlayer) {
+      this.raise(this.currentPlayer.chips);
     }
   }
 
