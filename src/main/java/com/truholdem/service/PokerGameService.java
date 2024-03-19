@@ -166,12 +166,12 @@ public class PokerGameService {
     // Játékos tétje és passzolása
     public boolean playerBet(String playerId, int amount) {
         Player player = findPlayerById(playerId);
-        if (gameStarted && player != null && amount >= currentBet && player.getChips() >= amount) {
-            if (amount > currentBet) {
-                currentBet = amount; // Frissítjük a jelenlegi tétet, ha nagyobb
+        if (gameStarted && player != null && amount >= gameStatus.getCurrentBet() && player.getChips() >= amount) {
+            if (amount > gameStatus.getCurrentBet()) {
+                gameStatus.setCurrentBet(amount);
             }
-            player.setChips(player.getChips() - amount); // Levonjuk a tétet a játékos zsetonjaiból
-            pot += amount; // Növeljük a pot méretét
+            player.setChips(player.getChips() - amount);
+            gameStatus.setCurrentPot(gameStatus.getCurrentPot() + amount);
             return true;
         }
         return false;
@@ -297,15 +297,23 @@ public class PokerGameService {
                         player.setFolded(true);
                         playerFold(player.getId());
                     } else {
-                        // Egyszerű logika: a botok az aktuális tét 1-2x-ese közötti összeget tesznek meg
-                        int minBet = currentBet * 2;
-                        int betAmount = minBet > 0 ? minBet + random.nextInt(minBet) : 10; // Ha minBet negatív, akkor alapértelmezett értéket használunk
-                        betAmount = Math.max(betAmount, minBet); // Minimum tétnek legalább a minBet értéknek kell lennie
+                        int minBet = Math.max(currentBet + random.nextInt(100), 20);
+                        int betAmount = minBet + random.nextInt(minBet);
+                        betAmount = Math.max(betAmount, minBet);
                         player.setCurrentBet(betAmount);
                         playerBet(player.getId(), betAmount);
-                        gameStatus.setCurrentPot(pot + betAmount);
                     }
                 });
     }
+    // Pot növelése validálással
+    public void addToPot(int amount) {
+        if (amount < 0) {
+            throw new IllegalArgumentException("Amount cannot be negative.");
+        }
+        gameStatus.setCurrentPot(gameStatus.getCurrentPot() + amount);
+    }
 
+    public void updateCurrentBet(int newBet) {
+        gameStatus.setCurrentBet(newBet);
+    }
 }

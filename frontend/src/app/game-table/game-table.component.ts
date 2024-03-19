@@ -47,6 +47,7 @@ export class GameTableComponent implements OnInit {
     this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
       next: (data) => {
         this.game = data;
+        this.currentPot = data.currentPot;
       },
       error: (error: HttpErrorResponse) => {
         console.error('Error fetching game status:', error.message);

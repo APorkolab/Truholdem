@@ -21,9 +21,7 @@ export class RaiseInputComponent implements OnInit {
   constructor(private http: HttpClient) { }
 
   ngOnInit(): void {
-    if (this.game) {
-      this.setMaxRaiseAmount();
-    }
+    this.setMaxRaiseAmount();
   }
 
   setMaxRaiseAmount(): void {
@@ -68,7 +66,9 @@ export class RaiseInputComponent implements OnInit {
       } else {
         alert('The raise amount cannot exceed your chip count.');
       }
+      this.getGameStatus();
     }
+
   }
 
   allIn(): void {
@@ -81,6 +81,7 @@ export class RaiseInputComponent implements OnInit {
     this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
       next: (data) => {
         this.game = data;
+        this.maxRaiseAmount = this.game?.players.find(player => !player.name?.startsWith('Bot'))?.chips || 10;
       },
       error: (error: HttpErrorResponse) => {
         console.error('Error fetching game status:', error.message);

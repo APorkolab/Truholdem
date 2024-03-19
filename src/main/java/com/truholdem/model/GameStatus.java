@@ -7,20 +7,24 @@ public class GameStatus {
     private List<Card> communityCards = new ArrayList<>();
     private List<Player> players = new ArrayList<>();
     private GamePhase phase = GamePhase.PRE_FLOP; // Kezdő állapot
-    private int currentPot = 0; // Jelenlegi pot mérete
+    private int currentPot = 0;
+
+    private int currentBet = 0;
+
+    public int getCurrentBet() {
+        return currentBet;
+    }
+
+    public void setCurrentBet(int currentBet) {
+        this.currentBet = currentBet;
+    }
 
     // Játékfázisok enumja
     public enum GamePhase {
         PRE_FLOP, FLOP, TURN, RIVER, SHOWDOWN;
     }
 
-    // Pot növelése validálással
-    public void addToPot(int amount) {
-        if (amount < 0) {
-            throw new IllegalArgumentException("Amount cannot be negative.");
-        }
-        currentPot += amount;
-    }
+
 
     // Játékos hozzáadása
     public void addPlayer(Player player) {
