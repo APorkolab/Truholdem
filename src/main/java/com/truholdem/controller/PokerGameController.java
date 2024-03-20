@@ -6,7 +6,9 @@ import com.truholdem.service.PokerGameService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -48,11 +50,15 @@ public class PokerGameController {
     }
 
     @PostMapping("/bet")
-    public ResponseEntity<String> playerBet(@RequestParam String playerId, @RequestParam int amount) {
-        if (pokerGameService.playerBet(playerId, amount)) {
-            return ResponseEntity.ok("Bet placed successfully.");
+    public ResponseEntity<Map<String, String>> playerBet(@RequestParam String playerId, @RequestParam int amount) {
+        boolean betPlaced = pokerGameService.playerBet(playerId, amount);
+        Map<String, String> response = new HashMap<>();
+        if (betPlaced) {
+            response.put("message", "Bet placed successfully.");
+            return ResponseEntity.ok(response);
         } else {
-            return ResponseEntity.badRequest().body("Bet placement failed.");
+            response.put("error", "Bet placement failed.");
+            return ResponseEntity.badRequest().body(response);
         }
     }
 

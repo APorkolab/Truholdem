@@ -11,6 +11,10 @@ import java.util.*;
 
 @Service
 public class PokerGameService {
+    private int smallBlindAmount = 50;
+    private int bigBlindAmount = 100;
+    private Player smallBlindPlayer;
+    private Player bigBlindPlayer;
     private GameStatus gameStatus;
     private Deck deck;
     private boolean gameStarted;
@@ -36,8 +40,8 @@ public class PokerGameService {
 
 
     public GameStatus startGame(List<PlayerInfo> playersInfo) {
-        resetGame(); // Játék állapotának alaphelyzetbe állítása
-        deck.shuffle(); // Pakli újrakeverése
+        resetGame();
+        deck.shuffle();
 
         // Ha a lista null vagy üres, akkor alapértelmezett tesztjátékosokat adunk hozzá
         if (playersInfo == null || playersInfo.isEmpty()) {
@@ -51,10 +55,25 @@ public class PokerGameService {
             }
         }
 
+        setBlinds();
         dealInitialCards();
+        makeBotDecisions();
         gameStatus.setPhase(GameStatus.GamePhase.PRE_FLOP);
         gameStarted = true;
         return gameStatus;
+    }
+
+    private void setBlinds() {
+        List<Player> activePlayers = gameStatus.getPlayers();
+        if (activePlayers.size() >= 2) {
+            // Feltételezve, hogy az activePlayers lista már tartalmazza a játékosokat a kívánt sorrendben
+            smallBlindPlayer = activePlayers.get(0);
+            bigBlindPlayer = activePlayers.get(1);
+
+            // Kisvak és nagyvak tétjeinek levonása és a potba helyezése
+            playerBet(smallBlindPlayer.getId(), smallBlindAmount);
+            playerBet(bigBlindPlayer.getId(), bigBlindAmount);
+        }
     }
 
 
@@ -65,6 +84,12 @@ public class PokerGameService {
                 player.addCardToHand(deck.drawCard());
             }
         });
+    }
+
+    private void rotateBlinds() {
+        Collections.rotate(gameStatus.getPlayers(), -1);
+        // Újra beállítja a vakokat a következő körre
+        setBlinds();
     }
 
     public boolean registerPlayer(String playerName, int startingChips, boolean isBot) {
@@ -93,6 +118,7 @@ public class PokerGameService {
     public Optional<GameStatus> dealFlop() {
         if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.PRE_FLOP) {
             performFlop();
+            makeBotDecisions();
             gameStatus.setPhase(GameStatus.GamePhase.FLOP);
             return Optional.of(gameStatus);
         }
@@ -125,11 +151,7 @@ public class PokerGameService {
 
         // Ellenőrizzük, hogy a játékos létezik-e és még nem passzolt-e.
         if (player != null && !player.isFolded()) {
-            // Beállítjuk a játékos állapotát "passzolt"ra.
             player.setFolded(true);
-
-            // Ellenőrizzük, van-e olyan szituáció, ami miatt a játéknak korai véget kell érnie.
-            // Például, ha csak egy aktív játékos marad.
             checkForEarlyWin();
 
             return true; // Sikeres passzolás
@@ -145,22 +167,22 @@ public class PokerGameService {
         for (int i = 0; i < 3; i++) {
             flop.add(deck.drawCard());
         }
-        gameStatus.setCommunityCards(flop);
         makeBotDecisions();
+        gameStatus.setCommunityCards(flop);
     }
 
     private void performTurn() {
         deck.drawCard(); // Burn
         Card turnCard = deck.drawCard();
-        gameStatus.addCardToCommunity(turnCard);
         makeBotDecisions();
+        gameStatus.addCardToCommunity(turnCard);
     }
 
     private void performRiver() {
         deck.drawCard(); // Burn
         Card riverCard = deck.drawCard();
-        gameStatus.addCardToCommunity(riverCard);
         makeBotDecisions();
+        gameStatus.addCardToCommunity(riverCard);
     }
 
     // Játékos tétje és passzolása
@@ -172,10 +194,14 @@ public class PokerGameService {
             }
             player.setChips(player.getChips() - amount);
             gameStatus.setCurrentPot(gameStatus.getCurrentPot() + amount);
+            System.out.println("Bet placed: " + playerId + " bet " + amount);
             return true;
+        } else {
+            System.out.println("Bet failed: " + (player == null ? "Player not found" : "Invalid bet") + " by " + playerId);
+            return false;
         }
-        return false;
     }
+
 
     public void checkForEarlyWin() {
         long activePlayers = gameStatus.getPlayers().stream().filter(p -> !p.isFolded()).count();
@@ -187,7 +213,7 @@ public class PokerGameService {
 
     private void endGameEarly() {
         Player winner = gameStatus.getPlayers().stream()
-                .filter(p -> !p.isFolded()) // Itt javítottam a metódus hívást
+                .filter(p -> !p.isFolded())
                 .findFirst()
                 .orElse(null);
         if (winner != null) {
@@ -205,7 +231,10 @@ public class PokerGameService {
             String winnerId = determineWinner();
             gameStarted = false;
             dealInitialCards(); // Újraindítja a játékot a következő körre
+            rotateBlinds();
+            resetGame();
             return winnerId;
+
         }
         return null;
     }
@@ -297,14 +326,21 @@ public class PokerGameService {
                         player.setFolded(true);
                         playerFold(player.getId());
                     } else {
-                        int minBet = Math.max(currentBet + random.nextInt(100), 20);
-                        int betAmount = minBet + random.nextInt(minBet);
-                        betAmount = Math.max(betAmount, minBet);
-                        player.setCurrentBet(betAmount);
-                        playerBet(player.getId(), betAmount);
+                        // A minimum tét, amit a botnak meg kell tennie (figyelembe véve a jelenlegi tétet)
+                        int minBet = Math.max(currentBet, 20);
+                        if (player.getChips() > minBet) {
+                            // A bot rendelkezésére álló maximális tét, ami nem haladhatja meg a rendelkezésre álló zsetonokat
+                            int maxBetPossible = Math.min(player.getChips(), minBet + random.nextInt(100) + 1);
+                            playerBet(player.getId(), maxBetPossible);
+                        } else {
+                            // Ha a bot nem tudja megtenni a minimum tétet, passzol
+                            player.setFolded(true);
+                            playerFold(player.getId());
+                        }
                     }
                 });
     }
+
     // Pot növelése validálással
     public void addToPot(int amount) {
         if (amount < 0) {
