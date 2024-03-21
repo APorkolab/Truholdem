@@ -25,14 +25,11 @@ export class GameTableComponent implements OnInit {
   constructor(private http: HttpClient) { }
 
   ngOnInit(): void {
-    this.nonBotPlayer = this.game?.players?.find(player => !player.name?.startsWith('Bot'));
+
     this.currentPot = this.game?.currentPot || 0;
     this.getGameStatus();
     this.setCurrentNonBotPlayerId();
-
-
   }
-
 
   @ViewChild('raiseModal') raiseModal!: ElementRef;
 
@@ -119,7 +116,7 @@ export class GameTableComponent implements OnInit {
   }
 
   fold(): void {
-
+    this.nonBotPlayer = this.game?.players?.find(player => !player.name?.startsWith('Bot'));
     if (this.nonBotPlayer) {
       const params = new HttpParams().set('playerId', this.nonBotPlayer.id);
 

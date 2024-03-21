@@ -9,7 +9,7 @@ public class GameStatus {
     private GamePhase phase = GamePhase.PRE_FLOP; // Kezdő állapot
     private int currentPot = 0;
 
-    private int currentBet = 0;
+    private int currentBet;
 
     public int getCurrentBet() {
         return currentBet;

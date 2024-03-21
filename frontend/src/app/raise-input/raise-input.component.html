@@ -1,6 +1,6 @@
 <!-- Raise button in your game controls -->
 <button type="button" class="btn btn-primary" (click)="showRaiseInput()">Raise</button>
-<button *ngIf="game?.phase !== 'RIVER'" (click)="allIn()">All-In</button>
+<button *ngIf="game?.phase !== 'RIVER'" type="button" class="btn btn-warning" (click)="allIn()">All-in</button>
 
 <!-- Raise input overlay -->
 <div *ngIf="isRaiseInputVisible" class="raise-overlay">

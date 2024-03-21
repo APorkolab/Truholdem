@@ -8,7 +8,7 @@ public class Player {
     private String name;
     private List<Card> hand = new ArrayList<>();
     private int chips = 1000; // Kezdő zsetonok
-    private int currentBet = 0; // Jelenlegi tét
+    private int betAmount = 0; // Jelenlegi tét
     private boolean folded = false; // Jelzi, hogy a játékos passzolt-e
 
     public Player(String id) {
@@ -20,7 +20,7 @@ public class Player {
         if (amount > chips) {
             throw new IllegalArgumentException("Not enough chips.");
         }
-        currentBet += amount;
+        betAmount += amount;
         chips -= amount;
     }
 
@@ -57,8 +57,8 @@ public class Player {
         return chips;
     }
 
-    public int getCurrentBet() {
-        return currentBet;
+    public int getBetAmount() {
+        return betAmount;
     }
 
     public boolean isFolded() {
@@ -83,8 +83,8 @@ public class Player {
 
     // A játékos állapotának JSON formátumban való kiíratása
     public String toJson() {
-        return String.format("{\"id\":\"%s\", \"hand\":%s, \"chips\":%d, \"currentBet\":%d, \"isFolded\":%b}",
-                id, hand.toString(), chips, currentBet, folded);
+        return String.format("{\"id\":\"%s\", \"hand\":%s, \"chips\":%d, \"betAmount\":%d, \"isFolded\":%b}",
+                id, hand.toString(), chips, betAmount, folded);
     }
 
     // További setterek
@@ -92,8 +92,8 @@ public class Player {
         this.chips = chips;
     }
 
-    public void setCurrentBet(int currentBet) {
-        this.currentBet = currentBet;
+    public void setBetAmount(int betAmount) {
+        this.betAmount = betAmount;
     }
 
     @Override
@@ -102,7 +102,7 @@ public class Player {
                 "id='" + id + '\'' +
                 ", hand=" + hand +
                 ", chips=" + chips +
-                ", currentBet=" + currentBet +
+                ", betAmount=" + betAmount +
                 ", folded=" + folded +
                 '}';
     }

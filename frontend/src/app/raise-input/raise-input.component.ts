@@ -20,14 +20,12 @@ export class RaiseInputComponent implements OnInit {
 
   constructor(private http: HttpClient) { }
 
-  ngOnInit(): void {
-    this.setMaxRaiseAmount();
+  async ngOnInit(): Promise<void> {
+    await this.getGameStatus();
   }
 
-  setMaxRaiseAmount(): void {
-
+  async setMaxRaiseAmount(): Promise<void> {
     this.maxRaiseAmount = this.game?.players.find(player => !player.name?.startsWith('Bot'))?.chips || 10;
-    console.log(this.currentPlayer);
     console.log(this.game?.players);
   }
 
@@ -39,49 +37,46 @@ export class RaiseInputComponent implements OnInit {
     this.isRaiseInputVisible = false;
   }
 
-  raise(raiseAmount: number): void {
+  async raise(raiseAmount: number): Promise<void> {
     this.isRaiseInputVisible = false;
     const currentPlayerId = this.game?.players.find(player => !player.name?.startsWith('Bot'))?.id;
     const currentPlayer = this.game?.players.find(player => !player.name?.startsWith('Bot'));
     if (currentPlayerId && raiseAmount > 0) {
       if (raiseAmount <= currentPlayer!.chips) {
         const headers = new HttpHeaders({
-          'Content-Type': 'application/x-www-form-urlencoded', // Módosítva az adattípust
+          'Content-Type': 'application/x-www-form-urlencoded',
         });
 
-        // Az adatokat URL kódolt formában kell elküldeni
         const body = new HttpParams()
           .set('playerId', currentPlayerId)
           .set('amount', raiseAmount.toString());
 
-        this.http.post('http://localhost:8080/api/poker/bet', body.toString(), { headers }).subscribe({
-          next: (data) => {
-            // Response handling
-            this.getGameStatus();
-          },
-          error: (error) => {
-            console.error('Error during raise:', error);
-          }
-        });
+        try {
+          const response = await this.http.post('http://localhost:8080/api/poker/bet', body.toString(), { headers }).toPromise();
+          this.getGameStatus();
+        } catch (error) {
+          console.error('Error during raise:', error);
+          this.getGameStatus();
+        }
       } else {
         alert('The raise amount cannot exceed your chip count.');
       }
-      this.getGameStatus();
     }
-
   }
 
-  allIn(): void {
-    if (this.currentPlayer) {
-      this.raise(this.currentPlayer.chips);
+  async allIn(): Promise<void> {
+    const currentPlayer = this.game?.players.find(player => !player.name?.startsWith('Bot'));
+    if (currentPlayer) {
+      await this.raise(currentPlayer.chips);
     }
+    await this.getGameStatus();
   }
 
   getGameStatus(): void {
     this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
       next: (data) => {
         this.game = data;
-        this.maxRaiseAmount = this.game?.players.find(player => !player.name?.startsWith('Bot'))?.chips || 10;
+        this.setMaxRaiseAmountAfterGameStatusUpdate();
       },
       error: (error: HttpErrorResponse) => {
         console.error('Error fetching game status:', error.message);
@@ -89,6 +84,11 @@ export class RaiseInputComponent implements OnInit {
       }
     });
   }
+
+  async setMaxRaiseAmountAfterGameStatusUpdate(): Promise<void> {
+    await this.setMaxRaiseAmount();
+  }
+
 }
 
 

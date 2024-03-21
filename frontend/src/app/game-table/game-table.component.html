@@ -7,10 +7,11 @@
       'right': i === 2
     }" class="player">
 
-		<!-- Kártyák vízszintes elrendezése -->
+		<!-- Kártyák vízszintes elrendezése, figyelembe véve, hogy a játékos eldobta-e a lapjait -->
 		<div *ngFor="let card of player.hand" class="card">
-			<img *ngIf="game?.phase === 'RIVER' || !player.name?.startsWith('Bot'); else backCard" [src]="getCardImage(card)"
-				[alt]="card.value + ' of ' + card.suit" class="card-image">
+			<img
+				*ngIf="(!player.folded || player.chips <= 0) && (game?.phase === 'RIVER' || !player.name?.startsWith('Bot')); else backCard"
+				[src]="getCardImage(card)" [alt]="card.value + ' of ' + card.suit" class="card-image">
 			<ng-template #backCard>
 				<img src="../../assets/cards/back.png" alt="Card Back" class="card-image">
 			</ng-template>
@@ -34,7 +35,7 @@
 
 	<div class="actions">
 		<button *ngIf="game?.phase !== 'RIVER'" (click)="fold()">Fold</button>
-		<app-raise-input [game]="game"></app-raise-input>
+		<app-raise-input></app-raise-input>
 		<!-- Game End Modal -->
 		<div class="modal" tabindex="-1" id="gameEndModal">
 			<div class="modal-dialog">
@@ -54,7 +55,7 @@
 			</div>
 		</div>
 
-		<div>Pots: {{ currentPot }}</div>
+		<div>Pots: {{ game.currentPot }} || 0 </div>
 		<br>
 		<button *ngIf="game?.phase === 'PRE_FLOP'" (click)="dealFlop()">Deal Flop</button>
 		<button *ngIf="game?.phase === 'FLOP'" (click)="dealTurn()">Deal Turn</button>

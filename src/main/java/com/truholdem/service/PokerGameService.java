@@ -66,13 +66,13 @@ public class PokerGameService {
     private void setBlinds() {
         List<Player> activePlayers = gameStatus.getPlayers();
         if (activePlayers.size() >= 2) {
-            // Feltételezve, hogy az activePlayers lista már tartalmazza a játékosokat a kívánt sorrendben
             smallBlindPlayer = activePlayers.get(0);
             bigBlindPlayer = activePlayers.get(1);
 
-            // Kisvak és nagyvak tétjeinek levonása és a potba helyezése
             playerBet(smallBlindPlayer.getId(), smallBlindAmount);
             playerBet(bigBlindPlayer.getId(), bigBlindAmount);
+
+            currentBet = bigBlindAmount;
         }
     }
 
@@ -117,6 +117,7 @@ public class PokerGameService {
     // Deal the flop
     public Optional<GameStatus> dealFlop() {
         if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.PRE_FLOP) {
+            setBlinds();
             performFlop();
             makeBotDecisions();
             gameStatus.setPhase(GameStatus.GamePhase.FLOP);
@@ -129,6 +130,7 @@ public class PokerGameService {
     public Optional<GameStatus> dealTurn() {
         if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.FLOP) {
             performTurn();
+            makeBotDecisions();
             gameStatus.setPhase(GameStatus.GamePhase.TURN);
             return Optional.of(gameStatus);
         }
@@ -139,6 +141,7 @@ public class PokerGameService {
     public Optional<GameStatus> dealRiver() {
         if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.TURN) {
             performRiver();
+            makeBotDecisions();
             gameStatus.setPhase(GameStatus.GamePhase.RIVER);
             return Optional.of(gameStatus);
         }
@@ -167,22 +170,22 @@ public class PokerGameService {
         for (int i = 0; i < 3; i++) {
             flop.add(deck.drawCard());
         }
-        makeBotDecisions();
         gameStatus.setCommunityCards(flop);
+        makeBotDecisions();
     }
 
     private void performTurn() {
         deck.drawCard(); // Burn
         Card turnCard = deck.drawCard();
-        makeBotDecisions();
         gameStatus.addCardToCommunity(turnCard);
+        makeBotDecisions();
     }
 
     private void performRiver() {
         deck.drawCard(); // Burn
         Card riverCard = deck.drawCard();
-        makeBotDecisions();
         gameStatus.addCardToCommunity(riverCard);
+        makeBotDecisions();
     }
 
     // Játékos tétje és passzolása
@@ -193,11 +196,12 @@ public class PokerGameService {
                 gameStatus.setCurrentBet(amount);
             }
             player.setChips(player.getChips() - amount);
+            player.setBetAmount(amount); // Frissítjük a játékos tétjét
             gameStatus.setCurrentPot(gameStatus.getCurrentPot() + amount);
             System.out.println("Bet placed: " + playerId + " bet " + amount);
             return true;
         } else {
-            System.out.println("Bet failed: " + (player == null ? "Player not found" : "Invalid bet") + " by " + playerId);
+            System.out.println("Bet failed: " + (player == null ? "Player not found" : "Invalid bet - Current Bet: " + gameStatus.getCurrentBet() + ", Player Chips: " + (player != null ? player.getChips() : "N/A")) + " by " + playerId);
             return false;
         }
     }
@@ -242,8 +246,8 @@ public class PokerGameService {
     private boolean areAllBetsEqual() {
         int expectedBet = currentBet;
         return gameStatus.getPlayers().stream()
-                .filter(p -> !p.isFolded()) 
-                .allMatch(p -> p.getCurrentBet() == expectedBet);
+                .filter(p -> !p.isFolded())
+                .allMatch(p -> p.getBetAmount() == expectedBet);
     }
 
     // Következő kör vagy játék vége
@@ -277,7 +281,7 @@ public class PokerGameService {
     private String determineWinner() {
         HandEvaluator evaluator = new HandEvaluator();
         Optional<Player> winner = gameStatus.getPlayers().stream()
-                .filter(player -> !player.isFolded()) 
+                .filter(player -> !player.isFolded())
                 .max(Comparator.comparing(player -> {
                     HandResult handResult = evaluator.evaluate(player.getHand(), gameStatus.getCommunityCards());
                     return handResult.getHandStrength();
@@ -320,26 +324,18 @@ public class PokerGameService {
     private void makeBotDecisions() {
         Random random = new Random();
         gameStatus.getPlayers().stream()
-                .filter(player -> player.getId().startsWith("Bot"))
+                .filter(player -> player.getId().startsWith("Bot") && !player.isFolded())
                 .forEach(player -> {
-                    if (random.nextBoolean()) {
-                        player.setFolded(true);
-                        playerFold(player.getId());
+                    int minBet = Math.max(gameStatus.getCurrentBet(), 20);
+                    int bet = minBet + random.nextInt(100);
+                    if (player.getChips() >= bet) {
+                        playerBet(player.getId(), bet);
                     } else {
-                        // A minimum tét, amit a botnak meg kell tennie (figyelembe véve a jelenlegi tétet)
-                        int minBet = Math.max(currentBet, 20);
-                        if (player.getChips() > minBet) {
-                            // A bot rendelkezésére álló maximális tét, ami nem haladhatja meg a rendelkezésre álló zsetonokat
-                            int maxBetPossible = Math.min(player.getChips(), minBet + random.nextInt(100) + 1);
-                            playerBet(player.getId(), maxBetPossible);
-                        } else {
-                            // Ha a bot nem tudja megtenni a minimum tétet, passzol
-                            player.setFolded(true);
-                            playerFold(player.getId());
-                        }
+                        playerFold(player.getId());
                     }
                 });
     }
+
 
     // Pot növelése validálással
     public void addToPot(int amount) {
