@@ -1,10 +1,10 @@
 <div class="game-table">
 	<!-- Az opcionális láncolás használata az esetleges undefined értékek kezelésére -->
 	<div *ngFor="let player of game?.players; let i = index" [ngClass]="{
-      'user': !player.name?.startsWith('Bot'), 
-      'left': i === 0, 
-      'top': i === 1, 
-      'right': i === 2
+      'user': i === 0,  
+      'left': i === 3,  
+      'top': i === 1,  
+      'right': i === 2  
     }" class="player">
 
 		<!-- Kártyák vízszintes elrendezése, figyelembe véve, hogy a játékos eldobta-e a lapjait -->

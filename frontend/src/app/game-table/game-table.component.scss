@@ -2,8 +2,9 @@
 .top,
 .right,
 .user {
-  position: absolute;
+  transform: translate(-50%, -50%);
 }
+
 
 .game-table {
   display: flex;
@@ -18,7 +19,6 @@
   height: 100vh;
 }
 
-
 .player {
   position: absolute;
   display: flexbox;
@@ -27,9 +27,10 @@
 }
 
 .left {
-  top: 50%;
-  left: 0;
-  transform: translateY(-50%);
+  left: 15%;
+
+  bottom: 30%;
+  position: absolute;
 }
 
 .right {
