@@ -1,14 +1,20 @@
-<!-- register-players.component.html -->
-<div class="container">
-	<h2>Regisztráció</h2>
-	<form (ngSubmit)="onSubmit()" #playerForm="ngForm">
-		<div *ngFor="let player of players; let i = index">
-			<input type="text" [(ngModel)]="player.name" name="playerName{{i}}" placeholder="Játékos neve">
-			<input type="number" [(ngModel)]="player.startingChips" name="startingChips{{i}}" placeholder="Kezdő zsetonok">
-			<input type="checkbox" [(ngModel)]="player.isBot" name="isBot{{i}}"> Bot?
-			<button (click)="removePlayer(i)">Remove</button>
-		</div>
-		<button type="submit">Regisztráció</button>
-	</form>
-	<button (click)="addPlayer()">Játékos hozzáadása</button>
+<div id="full">
+	<div class="container">
+		<h2>Player Registration <span class="logo-placeholder"></span></h2>
+		<form (ngSubmit)="onSubmit()" #playerForm="ngForm">
+			<div *ngFor="let player of players; let i = index" class="player-entry">
+				<input type="text" [(ngModel)]="player.name" [name]="'playerName' + i" placeholder="Player Name">
+				<input type="number" [(ngModel)]="player.startingChips" [name]="'startingChips' + i"
+					placeholder="Starting Chips">
+				<label>
+					<input type="checkbox" [(ngModel)]="player.isBot" [name]="'isBot' + i"> Is Bot?
+				</label>
+				<button class="remove-btn" (click)="removePlayer(i)">Remove</button>
+			</div>
+			<div id="buttons">
+				<button type="submit" class="submit-btn">Register</button>
+				<button class="add-btn" (click)="addPlayer()">Add Player</button>
+			</div>
+		</form>
+	</div>
 </div>

@@ -20,7 +20,7 @@ export class GameTableComponent implements OnInit {
   nonBotPlayer: Player | undefined;
   currentNonBotPlayerId: string = '';
   @ViewChild(RaiseInputComponent) raiseInputComponent!: RaiseInputComponent;
-
+  showModal: boolean = false;
 
   constructor(private http: HttpClient) { }
 
@@ -147,4 +147,12 @@ export class GameTableComponent implements OnInit {
   }
 
 
+
+  closeModal(): void {
+    this.showModal = false;
+  }
+
+  openModal(): void {
+    this.showModal = true;
+  }
 }

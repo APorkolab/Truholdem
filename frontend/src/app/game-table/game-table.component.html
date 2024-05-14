@@ -1,24 +1,16 @@
 <div class="game-table">
-	<!-- Az opcionális láncolás használata az esetleges undefined értékek kezelésére -->
-	<div *ngFor="let player of game?.players; let i = index" [ngClass]="{
-      'user': i === 0,  
-      'left': i === 3,  
-      'top': i === 1,  
-      'right': i === 2  
-    }" class="player">
+	<div class="logo-placeholder"></div> <!-- Display the logo at the top center -->
 
-		<!-- Kártyák vízszintes elrendezése, figyelembe véve, hogy a játékos eldobta-e a lapjait -->
+	<div *ngFor="let player of game?.players; let i = index"
+		[ngClass]="{'user': i === 0, 'left': i === 3, 'top': i === 1, 'right': i === 2}" class="player">
 		<div *ngFor="let card of player.hand" class="card">
-			<img
-				*ngIf="(!player.folded || player.chips <= 0) && (game?.phase === 'RIVER' || !player.name?.startsWith('Bot')); else backCard"
+			<img *ngIf="(!player.folded || player.chips <= 0) && (game?.phase === 'RIVER' || !player.name?.startsWith('Bot'))"
 				[src]="getCardImage(card)" [alt]="card.value + ' of ' + card.suit" class="card-image">
 			<ng-template #backCard>
 				<img src="../../assets/cards/back.png" alt="Card Back" class="card-image">
 			</ng-template>
 		</div>
 
-
-		<!-- Játékos információk -->
 		<div class="player-info">
 			<span>{{ player.name || 'Anonymous' }}</span>
 			<span> Chips: {{ player.chips }}</span>
@@ -26,7 +18,6 @@
 		</div>
 	</div>
 
-	<!-- Közösségi kártyák -->
 	<div class="community-cards">
 		<div *ngFor="let card of game?.communityCards" class="card">
 			<img [src]="getCardImage(card)" [alt]="card.value + ' of ' + card.suit" class="card-image">
@@ -36,30 +27,28 @@
 	<div class="actions">
 		<button *ngIf="game?.phase !== 'RIVER'" (click)="fold()">Fold</button>
 		<app-raise-input></app-raise-input>
-		<!-- Game End Modal -->
-		<div class="modal" tabindex="-1" id="gameEndModal">
-			<div class="modal-dialog">
-				<div class="modal-content">
-					<div class="modal-header">
-						<h5 class="modal-title">Game Ended</h5>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-					</div>
-					<div class="modal-body">
-						<p> </p>
-					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-						<button type="button" class="btn btn-primary">Save changes</button>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<div>Pots: {{ game.currentPot }} || 0 </div>
-		<br>
+		<div>Pots: {{ game.currentPot || 0 }}</div>
 		<button *ngIf="game?.phase === 'PRE_FLOP'" (click)="dealFlop()">Deal Flop</button>
 		<button *ngIf="game?.phase === 'FLOP'" (click)="dealTurn()">Deal Turn</button>
 		<button *ngIf="game?.phase === 'TURN'" (click)="dealRiver()">Deal River</button>
-		<button *ngIf="game?.phase === 'RIVER'" (click)="endGame()">End Game</button>
+		<button *ngIf="game?.phase === 'RIVER'" (click)="endGame(); openModal()">End Game</button>
+	</div>
+
+	<div class="modal" *ngIf="showModal">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title">Game Ended</h5>
+					<button type="button" class="btn-close" (click)="closeModal()">Close</button>
+				</div>
+				<div class="modal-body">
+					<!-- Game result or message -->
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" (click)="closeModal()">Close</button>
+					<button type="button" class="btn btn-primary">Save changes</button>
+				</div>
+			</div>
+		</div>
 	</div>
 </div>
