@@ -47,10 +47,9 @@
   }
 
   .user {
-    bottom: 15%;
+    bottom: 25%;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 1;
     flex-direction: row;
   }
 
@@ -201,31 +200,37 @@
     margin-bottom: 20px;
   }
 
+  /* Mobil nézet (max-width: 768px) */
   @media (max-width: 768px) {
     .game-table {
+      display: flex;
+      flex-direction: column;
       align-items: flex-start;
+      height: 42rem;
     }
 
     .player,
     .community-cards {
       position: static;
       transform: none;
+      width: 100%;
     }
 
     .player {
+      display: flex;
+      flex-direction: row;
       width: 100%;
       margin-bottom: 10px;
-      flex-direction: row;
     }
 
     .card,
     .community-cards .card {
       width: 50px;
-      /* Smaller size for mobile */
       height: 70px;
     }
 
     .community-cards {
+      display: flex;
       flex-direction: row;
       justify-content: center;
       margin-bottom: 20px;
@@ -233,12 +238,33 @@
     }
   }
 
-  @media (min-width: 769px) {
+  /* Normál és tablet nézetek (min-width: 769px) */
+  @media (min-width: 768px) and (max-width: 1920px) {
+    .game-table {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 72rem;
+    }
 
     .card,
     .community-cards .card {
       width: 100px;
-      /* Larger size for desktop */
-      height: 140px;
+      height: 145px;
+    }
+  }
+
+  /* Ultra-wide monitorok (min-width: 1921px) */
+  @media (min-width: 1921px) {
+    .game-table {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .card,
+    .community-cards .card {
+      width: 150px;
+      height: 220px;
     }
   }

@@ -1,9 +1,15 @@
-<!-- Raise button in your game controls -->
-<button type="button" class="btn btn-primary raise-btn" (click)="showRaiseInput()">Raise</button>
-<button *ngIf="game?.phase !== 'RIVER'" type="button" class="btn btn-warning all-in-btn"
-	(click)="allIn()">All-in</button>
-<button type="button" class="btn btn-info new-game-btn" (click)="startNewGame()">New Game</button>
-<button type="button" class="btn btn-danger reset-game-btn" (click)="resetGame()">Reset Game</button>
+<div id="buttons">
+	<button type="button" class="btn btn-primary raise-btn" (click)="showRaiseInput()">Raise</button>
+	<button type="button" class="btn btn-info" (click)="check()">Check</button>
+	<button *ngIf="game?.phase !== 'RIVER'" type="button" class="btn btn-warning all-in-btn"
+		(click)="allIn()">All-in</button>
+	<div>
+		<button type="button" class="btn btn-info new-game-btn" (click)="startNewGame()">New Game</button>
+		<button type="button" class="btn btn-danger reset-game-btn" (click)="resetGame()">Reset Game</button>
+	</div>
+</div>
+
+
 
 <!-- Raise input overlay -->
 <div *ngIf="isRaiseInputVisible" class="raise-overlay">

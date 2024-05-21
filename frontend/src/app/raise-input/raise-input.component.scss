@@ -62,6 +62,11 @@ input[type="checkbox"] {
 
 #buttons {
   text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 label {
@@ -85,11 +90,6 @@ button:hover {
   transform: scale(1.05);
   background-color: #d4af37;
   color: #000;
-}
-
-.new-game-btn,
-.reset-game-btn {
-  margin-top: 20px;
 }
 
 .submit-btn {

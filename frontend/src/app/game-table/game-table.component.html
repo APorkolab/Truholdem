@@ -1,14 +1,16 @@
+<!-- <div class="logo-placeholder">
+	<img src="../../assets/Baccaratio.png" alt="">
+</div> -->
 <div class="game-table">
-	<div class="logo-placeholder"></div> <!-- Display the logo at the top center -->
+
 
 	<div *ngFor="let player of game?.players; let i = index"
 		[ngClass]="{'user': i === 0, 'left': i === 3, 'top': i === 1, 'right': i === 2}" class="player">
 		<div *ngFor="let card of player.hand" class="card">
 			<img *ngIf="(!player.folded || player.chips <= 0) && (game?.phase === 'RIVER' || !player.name?.startsWith('Bot'))"
 				[src]="getCardImage(card)" [alt]="card.value + ' of ' + card.suit" class="card-image">
-			<ng-template #backCard>
-				<img src="../../assets/cards/back.png" alt="Card Back" class="card-image">
-			</ng-template>
+			<img *ngIf="player.folded || player.chips > 0 && (game?.phase !== 'RIVER' && player.name?.startsWith('Bot'))"
+				src="../../assets/cards/back.png" alt="Card Back" class="card-image">
 		</div>
 
 		<div class="player-info">
@@ -26,7 +28,7 @@
 
 	<div class="actions">
 		<button *ngIf="game?.phase !== 'RIVER'" (click)="fold()">Fold</button>
-		<app-raise-input></app-raise-input>
+		<app-raise-input [game]="game" (actionTaken)="handleRaiseAction()"></app-raise-input>
 		<div>Pots: {{ game.currentPot || 0 }}</div>
 		<button *ngIf="game?.phase === 'PRE_FLOP'" (click)="dealFlop()">Deal Flop</button>
 		<button *ngIf="game?.phase === 'FLOP'" (click)="dealTurn()">Deal Turn</button>

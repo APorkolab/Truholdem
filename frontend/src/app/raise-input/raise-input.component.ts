@@ -1,10 +1,10 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { Game } from '../model/game';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Player } from '../model/player';
 
 interface PlayerInfo {
-  name: string; // Kötelező string típus
+  name: string;
   startingChips: number;
   isBot: boolean;
 }
@@ -15,25 +15,27 @@ interface PlayerInfo {
   styleUrls: ['./raise-input.component.scss']
 })
 export class RaiseInputComponent implements OnInit {
-  @Input()
-  game!: Game;
+  @Input() game!: Game;
+  @Output() actionTaken = new EventEmitter<void>(); // Esemény kibocsátása akció végrehajtásakor
 
   isRaiseInputVisible = false;
   raiseAmount = 0;
   maxRaiseAmount = 0;
   currentPlayer: Player | undefined;
+  currentBet: number = 0;
 
-  players: PlayerInfo[] = [];  // Biztosítjuk, hogy a players tulajdonság definiálva van
+  players: PlayerInfo[] = []; // Biztosítjuk, hogy a players tulajdonság definiálva van
 
   constructor(private http: HttpClient) { }
 
   async ngOnInit(): Promise<void> {
     await this.getGameStatus();
-    this.initializePlayers();  // Initialize players from the game object
+    this.initializePlayers(); // Initialize players from the game object
   }
 
   async setMaxRaiseAmount(): Promise<void> {
     this.maxRaiseAmount = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'))?.chips || 10;
+    this.currentBet = this.game?.players.reduce((max, player) => player.currentBet > max ? player.currentBet : max, 0) || 0;
     console.log(this.game?.players);
   }
 
@@ -62,6 +64,7 @@ export class RaiseInputComponent implements OnInit {
         try {
           const response = await this.http.post('http://localhost:8080/api/poker/bet', body.toString(), { headers }).toPromise();
           this.getGameStatus();
+          this.actionTaken.emit(); // Esemény kibocsátása
         } catch (error) {
           console.error('Error during raise:', error);
           this.getGameStatus();
@@ -76,8 +79,22 @@ export class RaiseInputComponent implements OnInit {
     const currentPlayer = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'));
     if (currentPlayer) {
       await this.raise(currentPlayer.chips);
+      this.actionTaken.emit(); // Esemény kibocsátása
     }
     await this.getGameStatus();
+  }
+
+  async check(): Promise<void> {
+    const currentPlayer = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'));
+    if (currentPlayer) {
+      // Check if the current player's bet equals the highest bet or if the player is all-in
+      if (currentPlayer.currentBet === this.currentBet || currentPlayer.chips === 0) {
+        this.isRaiseInputVisible = false;
+        this.actionTaken.emit(); // Esemény kibocsátása a check gombbal
+      } else {
+        alert('You cannot check unless your current bet matches the highest bet or you are all-in.');
+      }
+    }
   }
 
   getGameStatus(): void {

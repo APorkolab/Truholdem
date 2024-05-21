@@ -1,7 +1,7 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Game } from '../model/game';
-import { Player } from './../model/player';
+import { Player } from '../model/player';
 import { Card } from '../model/card';
 import { RaiseInputComponent } from '../raise-input/raise-input.component';
 
@@ -17,6 +17,7 @@ export class GameTableComponent implements OnInit {
   nonBotPlayer: Player | undefined;
   currentNonBotPlayerId: string = '';
   showModal: boolean = false;
+  playerActionTaken: boolean = false;
 
   @ViewChild(RaiseInputComponent) raiseInputComponent!: RaiseInputComponent;
   @ViewChild('raiseModal') raiseModal!: ElementRef;
@@ -38,6 +39,8 @@ export class GameTableComponent implements OnInit {
       next: (data) => {
         this.game = data;
         this.setCurrentNonBotPlayerId();
+        // Check if the non-bot player has folded to allow phase progression
+        this.playerActionTaken = this.isFolded() || this.playerActionTaken;
       },
       error: (error: HttpErrorResponse) => {
         console.error('Error fetching game status:', error.message);
@@ -80,24 +83,36 @@ export class GameTableComponent implements OnInit {
   }
 
   dealFlop(): void {
-    this.http.get('http://localhost:8080/api/poker/flop').subscribe({
-      next: () => this.getGameStatus(),
-      error: (error) => console.error('Error during dealing the flop:', error)
-    });
+    if (this.playerActionTaken) {
+      this.http.get('http://localhost:8080/api/poker/flop').subscribe({
+        next: () => this.getGameStatus(),
+        error: (error) => console.error('Error during dealing the flop:', error)
+      });
+    } else {
+      alert('You must take an action before proceeding to the next phase.');
+    }
   }
 
   dealTurn(): void {
-    this.http.get('http://localhost:8080/api/poker/turn').subscribe({
-      next: () => this.getGameStatus(),
-      error: (error) => console.error('Error during dealing the turn:', error)
-    });
+    if (this.playerActionTaken) {
+      this.http.get('http://localhost:8080/api/poker/turn').subscribe({
+        next: () => this.getGameStatus(),
+        error: (error) => console.error('Error during dealing the turn:', error)
+      });
+    } else {
+      alert('You must take an action before proceeding to the next phase.');
+    }
   }
 
   dealRiver(): void {
-    this.http.get('http://localhost:8080/api/poker/river').subscribe({
-      next: () => this.getGameStatus(),
-      error: (error) => console.error('Error during dealing the river:', error)
-    });
+    if (this.playerActionTaken) {
+      this.http.get('http://localhost:8080/api/poker/river').subscribe({
+        next: () => this.getGameStatus(),
+        error: (error) => console.error('Error during dealing the river:', error)
+      });
+    } else {
+      alert('You must take an action before proceeding to the next phase.');
+    }
   }
 
   endGame(): void {
@@ -118,8 +133,9 @@ export class GameTableComponent implements OnInit {
       this.http.post('http://localhost:8080/api/poker/fold', null, { params: params, responseType: 'text' }).subscribe({
         next: (response) => {
           console.log("Fold successful", response);
+          this.playerActionTaken = true; // Mark action as taken
+          // Immediately update the status to reflect the fold
           this.getGameStatus();
-          this.endGame();
         },
         error: (error) => console.error('Error during fold:', error)
       });
@@ -128,12 +144,25 @@ export class GameTableComponent implements OnInit {
     }
   }
 
+  isFolded(): boolean {
+    return this.nonBotPlayer ? this.nonBotPlayer.folded : false;
+  }
+
   showRaiseInput(): void {
     this.raiseInputComponent.showRaiseInput();
   }
 
+  handleRaiseAction(): void {
+    this.playerActionTaken = true; // Mark action as taken when raise action is handled
+  }
+
+  handleCheckAction(): void {
+    this.playerActionTaken = true; // Mark action as taken when check action is handled
+  }
+
   allIn(): void {
     this.raiseInputComponent.allIn();
+    this.playerActionTaken = true; // Mark action as taken
   }
 
   closeModal(): void {
