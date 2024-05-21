@@ -3,6 +3,11 @@ import { Game } from '../model/game';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Player } from '../model/player';
 
+interface PlayerInfo {
+  name: string; // Kötelező string típus
+  startingChips: number;
+  isBot: boolean;
+}
 
 @Component({
   selector: 'app-raise-input',
@@ -18,14 +23,17 @@ export class RaiseInputComponent implements OnInit {
   maxRaiseAmount = 0;
   currentPlayer: Player | undefined;
 
+  players: PlayerInfo[] = [];  // Biztosítjuk, hogy a players tulajdonság definiálva van
+
   constructor(private http: HttpClient) { }
 
   async ngOnInit(): Promise<void> {
     await this.getGameStatus();
+    this.initializePlayers();  // Initialize players from the game object
   }
 
   async setMaxRaiseAmount(): Promise<void> {
-    this.maxRaiseAmount = this.game?.players.find(player => !player.name?.startsWith('Bot'))?.chips || 10;
+    this.maxRaiseAmount = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'))?.chips || 10;
     console.log(this.game?.players);
   }
 
@@ -39,8 +47,8 @@ export class RaiseInputComponent implements OnInit {
 
   async raise(raiseAmount: number): Promise<void> {
     this.isRaiseInputVisible = false;
-    const currentPlayerId = this.game?.players.find(player => !player.name?.startsWith('Bot'))?.id;
-    const currentPlayer = this.game?.players.find(player => !player.name?.startsWith('Bot'));
+    const currentPlayerId = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'))?.id;
+    const currentPlayer = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'));
     if (currentPlayerId && raiseAmount > 0) {
       if (raiseAmount <= currentPlayer!.chips) {
         const headers = new HttpHeaders({
@@ -65,7 +73,7 @@ export class RaiseInputComponent implements OnInit {
   }
 
   async allIn(): Promise<void> {
-    const currentPlayer = this.game?.players.find(player => !player.name?.startsWith('Bot'));
+    const currentPlayer = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'));
     if (currentPlayer) {
       await this.raise(currentPlayer.chips);
     }
@@ -89,6 +97,51 @@ export class RaiseInputComponent implements OnInit {
     await this.setMaxRaiseAmount();
   }
 
+  initializePlayers(): void {
+    this.players = this.game.players.map((player: Player) => ({
+      name: player.name || '', // Biztosítjuk, hogy a name soha ne legyen null
+      startingChips: player.chips,
+      isBot: player.name.startsWith('Bot')
+    }));
+  }
+
+  startNewGame(): void {
+    // Ensure all players with 0 chips are removed or reset their chips
+    this.players.forEach((player: PlayerInfo) => {
+      if (player.startingChips === 0) {
+        player.startingChips = 1000; // Reset to default starting chips
+      }
+    });
+
+    // Start new game with current players and their remaining chips
+    this.http.post('http://localhost:8080/api/poker/new-game', this.players).subscribe({
+      next: (response) => {
+        console.log(response);
+        window.location.href = '/start';
+      },
+      error: (error) => {
+        console.error(error);
+        alert('An error occurred while starting a new game. Please try again later.');
+      }
+    });
+  }
+
+  resetGame(): void {
+    if (confirm('Are you sure you want to reset the game? All players will start with default chips.')) {
+      this.players.forEach((player: PlayerInfo) => {
+        player.startingChips = 1000; // Reset all players' chips to default
+      });
+
+      this.http.post('http://localhost:8080/api/poker/reset-game', this.players).subscribe({
+        next: (response) => {
+          console.log(response);
+          window.location.href = '/start';
+        },
+        error: (error) => {
+          console.error(error);
+          alert('An error occurred while resetting the game. Please try again later.');
+        }
+      });
+    }
+  }
 }
-
-

@@ -34,7 +34,6 @@ h2 {
   display: block;
   height: 10rem;
   background: url('../../assets/Baccaratio.png') no-repeat center;
-
   background-size: contain;
   margin-bottom: 20px;
 }
@@ -45,7 +44,6 @@ h2 {
   gap: 10px;
   margin-bottom: 15px;
   align-items: center;
-  /* Ensure alignment is centered */
 }
 
 input[type="text"],
@@ -100,5 +98,97 @@ button:hover {
 
   .submit-btn {
     grid-column: 1 / -1;
+  }
+}
+
+/* Raise Modal Styles */
+.raise-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.5s ease;
+}
+
+.raise-input-box {
+  position: relative;
+  background: #f0f0f0;
+  padding: 30px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.5s ease;
+}
+
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #ff0000;
+}
+
+.raise-input-box .info {
+  margin-bottom: 15px;
+  color: #333;
+  font-weight: bold;
+}
+
+.raise-input-box input {
+  margin-bottom: 20px;
+  padding: 10px;
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+.raise-input-box .actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.raise-btn,
+.all-in-btn {
+  transition: transform 0.3s ease;
+}
+
+.raise-btn:hover,
+.all-in-btn:hover {
+  transform: scale(1.1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }

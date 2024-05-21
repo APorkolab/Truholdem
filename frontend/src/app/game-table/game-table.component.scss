@@ -56,8 +56,7 @@
 
   .card,
   .community-cards .card {
-    width: 3.5rem;
-    /* Unified card size */
+    width: 4rem;
     height: 10rem;
     border: 1px solid #000;
     border-radius: 5px;
@@ -72,10 +71,8 @@
     justify-content: center;
     position: absolute;
     top: 40%;
-    /* Adjusted for better visibility */
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 1;
   }
 
   .actions {
@@ -192,6 +189,8 @@
     background: white;
     padding: 20px;
     border-radius: 5px;
+    z-index: 2222;
+    color: #000;
   }
 
   .logo-placeholder {

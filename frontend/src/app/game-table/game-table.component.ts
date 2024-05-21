@@ -1,40 +1,33 @@
-import { Player } from './../model/player';
-import { Component, ElementRef, OnInit, Output, ViewChild } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Game } from '../model/game';
+import { Player } from './../model/player';
 import { Card } from '../model/card';
-import { RaiseInputComponent } from '../raise-input/raise-input.component'; // A pontos elérési útvonal a projekt struktúrájától függ
+import { RaiseInputComponent } from '../raise-input/raise-input.component';
 
-
-declare var bootstrap: any;
 @Component({
   selector: 'app-game-table',
   templateUrl: './game-table.component.html',
   styleUrls: ['./game-table.component.scss']
 })
 export class GameTableComponent implements OnInit {
-  game!: Game;
+  game: Game = { currentPot: 0, players: [], communityCards: [], phase: 'PRE_FLOP' }; // Initialize with default values
   raiseAmount: number = 0;
   playerChips: number = 0;
-  currentPot: number = 0;
   nonBotPlayer: Player | undefined;
   currentNonBotPlayerId: string = '';
-  @ViewChild(RaiseInputComponent) raiseInputComponent!: RaiseInputComponent;
   showModal: boolean = false;
+
+  @ViewChild(RaiseInputComponent) raiseInputComponent!: RaiseInputComponent;
+  @ViewChild('raiseModal') raiseModal!: ElementRef;
 
   constructor(private http: HttpClient) { }
 
   ngOnInit(): void {
-
-    this.currentPot = this.game?.currentPot || 0;
     this.getGameStatus();
-    this.setCurrentNonBotPlayerId();
   }
 
-  @ViewChild('raiseModal') raiseModal!: ElementRef;
-
   setCurrentNonBotPlayerId(): void {
-
     if (this.nonBotPlayer) {
       this.currentNonBotPlayerId = this.nonBotPlayer.id;
     }
@@ -44,7 +37,7 @@ export class GameTableComponent implements OnInit {
     this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
       next: (data) => {
         this.game = data;
-        this.currentPot = data.currentPot;
+        this.setCurrentNonBotPlayerId();
       },
       error: (error: HttpErrorResponse) => {
         console.error('Error fetching game status:', error.message);
@@ -56,7 +49,7 @@ export class GameTableComponent implements OnInit {
   getCardImage(card: Card): string {
     if (!card) return '../../assets/cards/back.png';
 
-    let rank = card['value'].toLowerCase();
+    let rank = card.value.toLowerCase();
     switch (rank) {
       case 'two': rank = '2'; break;
       case 'three': rank = '3'; break;
@@ -74,64 +67,62 @@ export class GameTableComponent implements OnInit {
       default: break;
     }
 
-    const suit = card['suit'].toLowerCase();
+    const suit = card.suit.toLowerCase();
 
     return `../../assets/cards/${rank}_of_${suit}.png`;
   }
 
   startGame(): void {
-    this.http.post('http://localhost:8080/api/poker/start', []).subscribe(data => {
-      this.getGameStatus();
+    this.http.post('http://localhost:8080/api/poker/start', []).subscribe({
+      next: () => this.getGameStatus(),
+      error: (error) => console.error('Error starting game:', error)
     });
   }
 
   dealFlop(): void {
     this.http.get('http://localhost:8080/api/poker/flop').subscribe({
-      next: (data) => {
-        this.getGameStatus();
-      },
-      error: (error) => {
-        console.error('Error during dealing the flop:', error);
-      }
+      next: () => this.getGameStatus(),
+      error: (error) => console.error('Error during dealing the flop:', error)
     });
   }
 
   dealTurn(): void {
-    this.http.get('http://localhost:8080/api/poker/turn').subscribe(data => {
-      this.getGameStatus();
+    this.http.get('http://localhost:8080/api/poker/turn').subscribe({
+      next: () => this.getGameStatus(),
+      error: (error) => console.error('Error during dealing the turn:', error)
     });
   }
 
   dealRiver(): void {
-    this.http.get('http://localhost:8080/api/poker/river').subscribe(data => {
-      this.getGameStatus();
+    this.http.get('http://localhost:8080/api/poker/river').subscribe({
+      next: () => this.getGameStatus(),
+      error: (error) => console.error('Error during dealing the river:', error)
     });
   }
 
   endGame(): void {
-    this.http.get<string>('http://localhost:8080/api/poker/end', { responseType: 'text' as 'json' }).subscribe(data => {
-      alert(data);
-      this.getGameStatus();
+    this.http.get<string>('http://localhost:8080/api/poker/end', { responseType: 'text' as 'json' }).subscribe({
+      next: (data) => {
+        alert(data);
+        this.getGameStatus();
+      },
+      error: (error) => console.error('Error ending game:', error)
     });
   }
 
   fold(): void {
-    this.nonBotPlayer = this.game?.players?.find(player => !player.name?.startsWith('Bot'));
+    this.nonBotPlayer = this.game.players.find(player => !player.name?.startsWith('Bot'));
     if (this.nonBotPlayer) {
       const params = new HttpParams().set('playerId', this.nonBotPlayer.id);
 
-      this.http.post('http://localhost:8080/api/poker/fold', null, { params: params, responseType: 'text' })
-        .subscribe({
-          next: (response) => {
-            console.log("Fold successful", response);
-            this.getGameStatus();
-            this.endGame();
-
-          },
-          error: (error) => {
-            console.error('Error during fold:', error);
-          }
-        });
+      this.http.post('http://localhost:8080/api/poker/fold', null, { params: params, responseType: 'text' }).subscribe({
+        next: (response) => {
+          console.log("Fold successful", response);
+          this.getGameStatus();
+          this.endGame();
+        },
+        error: (error) => console.error('Error during fold:', error)
+      });
     } else {
       console.error('No non-bot player found');
     }
@@ -141,12 +132,9 @@ export class GameTableComponent implements OnInit {
     this.raiseInputComponent.showRaiseInput();
   }
 
-
   allIn(): void {
     this.raiseInputComponent.allIn();
   }
-
-
 
   closeModal(): void {
     this.showModal = false;

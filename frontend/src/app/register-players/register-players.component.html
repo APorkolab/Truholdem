@@ -3,17 +3,17 @@
 		<h2>Player Registration <span class="logo-placeholder"></span></h2>
 		<form (ngSubmit)="onSubmit()" #playerForm="ngForm">
 			<div *ngFor="let player of players; let i = index" class="player-entry">
-				<input type="text" [(ngModel)]="player.name" [name]="'playerName' + i" placeholder="Player Name">
+				<input type="text" [(ngModel)]="player.name" [name]="'playerName' + i" placeholder="Player Name" required>
 				<input type="number" [(ngModel)]="player.startingChips" [name]="'startingChips' + i"
-					placeholder="Starting Chips">
+					placeholder="Starting Chips" required>
 				<label>
 					<input type="checkbox" [(ngModel)]="player.isBot" [name]="'isBot' + i"> Is Bot?
 				</label>
-				<button class="remove-btn" (click)="removePlayer(i)">Remove</button>
+				<button class="remove-btn" (click)="removePlayer(i)" type="button">Remove</button>
 			</div>
 			<div id="buttons">
 				<button type="submit" class="submit-btn">Register</button>
-				<button class="add-btn" (click)="addPlayer()">Add Player</button>
+				<button class="add-btn" (click)="addPlayer()" type="button">Add Player</button>
 			</div>
 		</form>
 	</div>
