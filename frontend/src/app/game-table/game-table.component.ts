@@ -44,8 +44,12 @@ export class GameTableComponent implements OnInit {
         this.playerActionTaken = this.isFolded() || this.playerActionTaken;
       },
       error: (error: HttpErrorResponse) => {
-        console.error('Error fetching game status:', error.message);
-        alert('An error occurred while fetching game status. Please try again later.');
+        if (error.status === 404) {
+          this.startNewGame(); // Ha nincs aktív játék, akkor új játékot indítunk
+        } else {
+          console.error('Error fetching game status:', error.message);
+          alert('An error occurred while fetching game status. Please try again later.');
+        }
       }
     });
   }
@@ -207,22 +211,46 @@ export class GameTableComponent implements OnInit {
   }
 
   startNewMatch(): void {
-    this.http.post<Game>('http://localhost:8080/api/poker/new-match', {}).subscribe({
+    // Ellenőrizzük, hogy a nem bot játékos dobott-e
+    this.nonBotPlayer = this.game.players.find(player => !player.name?.startsWith('Bot'));
+    if (this.nonBotPlayer && this.nonBotPlayer.folded) {
+      // Ha a nem bot játékos dobott, kezdünk egy teljes új játékot
+      this.startNewGame();
+    } else {
+      // Ellenkező esetben új meccset kezdünk
+      this.http.post<Game>('http://localhost:8080/api/poker/new-match', {}).subscribe({
+        next: (response) => {
+          if (response && response.players && response.players.length > 0) {
+            this.game = response;
+            this.playerActionTaken = false; // Reset player action flag
+            this.closeModal();
+          } else {
+            alert('No players with chips left or failed to start new match.');
+          }
+        },
+        error: (error: HttpErrorResponse) => {
+          console.error('Error during new match start:', error);
+          alert('An error occurred while starting a new match. Please try again later.');
+        }
+      });
+    }
+  }
+
+  startNewGame(): void {
+    this.http.post<Game>('http://localhost:8080/api/poker/start', []).subscribe({
       next: (response) => {
-        if (response && response.players && response.players.length > 0) { // Check if response contains players
+        if (response && response.players && response.players.length > 0) {
           this.game = response;
           this.playerActionTaken = false; // Reset player action flag
           this.closeModal();
         } else {
-          alert('No players with chips left or failed to start new match.');
+          alert('Failed to start new game.');
         }
       },
       error: (error: HttpErrorResponse) => {
-        console.error('Error during new match start:', error);
-        alert('An error occurred while starting a new match. Please try again later.');
+        console.error('Error during new game start:', error);
+        alert('An error occurred while starting a new game. Please try again later.');
       }
     });
   }
-
-
 }

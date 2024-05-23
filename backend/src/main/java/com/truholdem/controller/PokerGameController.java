@@ -86,6 +86,7 @@ public class PokerGameController {
     public ResponseEntity<GameStatus> getGameStatus() {
         GameStatus status = pokerGameService.getGameStatus();
         return status != null ? ResponseEntity.ok(status) : ResponseEntity.notFound().build();
+
     }
 
     @GetMapping("/end")
@@ -93,12 +94,6 @@ public class PokerGameController {
         String winnerId = pokerGameService.endGame();
         return winnerId != null ? ResponseEntity.ok("Game ended. Winner is: " + winnerId)
                 : ResponseEntity.badRequest().body("Game end failed or no winner.");
-    }
-
-    @PostMapping("/reset")
-    public ResponseEntity<Void> resetGame() {
-        pokerGameService.resetGame(false);
-        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/new-match")
@@ -111,6 +106,10 @@ public class PokerGameController {
         }
     }
 
-
+    @PostMapping("/reset")
+    public ResponseEntity<Void> resetGame() {
+        pokerGameService.resetGame(false);
+        return ResponseEntity.ok().build();
+    }
 
 }

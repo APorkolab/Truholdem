@@ -16,6 +16,7 @@ public class PokerGameService {
     private boolean gameStarted;
     private int currentBet;
     private int pot;
+    private List<PlayerInfo> initialPlayersInfo = new ArrayList<>();
 
     public PokerGameService() {
         this.gameStatus = new GameStatus();
@@ -31,9 +32,26 @@ public class PokerGameService {
         pot = 0;
 
         if (!keepPlayers) {
+            // Új játék esetén inicializáljuk újra a játékosokat
+            if (initialPlayersInfo.isEmpty()) {
+                initialPlayersInfo.add(new PlayerInfo("Anna", 1000, false));
+                initialPlayersInfo.add(new PlayerInfo("BotBéla", 1000,true));
+                initialPlayersInfo.add(new PlayerInfo("BotCili", 1000,true));
+                initialPlayersInfo.add(new PlayerInfo("BotJuli", 1000,true));
+            }
             gameStatus.getPlayers().clear();
+            for (PlayerInfo playerInfo : initialPlayersInfo) {
+                Player newPlayer = new Player(playerInfo.getName());
+                newPlayer.setChips(playerInfo.getStartingChips());
+                newPlayer.setFolded(false);
+                gameStatus.addPlayer(newPlayer);
+            }
         } else {
-            gameStatus.getPlayers().forEach(Player::clearHand);
+            // Új meccs esetén csak a folded állapotot állítjuk vissza
+            for (Player player : gameStatus.getPlayers()) {
+                player.clearHand();
+                player.setFolded(false);
+            }
         }
 
         return true;
