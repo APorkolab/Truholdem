@@ -1,11 +1,10 @@
-<!-- <div class="logo-placeholder">
-	<img src="../../assets/Baccaratio.png" alt="">
-</div> -->
 <div class="game-table">
-
-
-	<div *ngFor="let player of game?.players; let i = index"
-		[ngClass]="{'user': i === 0, 'left': i === 3, 'top': i === 1, 'right': i === 2}" class="player">
+	<div *ngFor="let player of game?.players; let i = index" [ngClass]="{
+	      'user': !player.name.startsWith('Bot'),
+	      'left': player.name.startsWith('Bot') && (i % 3 === 1),
+	      'top': player.name.startsWith('Bot') && (i % 3 === 2),
+	      'right': player.name.startsWith('Bot') && (i % 3 === 0)
+	    }" class="player">
 		<div *ngFor="let card of player.hand" class="card">
 			<img *ngIf="(!player.folded || player.chips <= 0) && (game?.phase === 'RIVER' || !player.name?.startsWith('Bot'))"
 				[src]="getCardImage(card)" [alt]="card.value + ' of ' + card.suit" class="card-image">
@@ -41,16 +40,16 @@
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title">Game Ended</h5>
-					<button type="button" class="btn-close" (click)="closeModal()">Close</button>
+					<button type="button" class="btn-close" (click)="closeModal()"></button>
 				</div>
 				<div class="modal-body">
-					<!-- Game result or message -->
+					<p>{{ gameResultMessage }}</p>
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-secondary" (click)="closeModal()">Close</button>
-					<button type="button" class="btn btn-primary">Save changes</button>
+					<button type="button" class="btn btn-primary" (click)="resetGame()">Teljes újraindítás</button>
+					<button type="button" class="btn btn-primary" (click)="startNewMatch()">Új meccs</button>
 				</div>
 			</div>
 		</div>
 	</div>
-</div>

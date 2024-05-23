@@ -31,6 +31,7 @@ public class PokerGameController {
             return ResponseEntity.badRequest().build();
         }
     }
+
     @GetMapping("/flop")
     public ResponseEntity<GameStatus> dealFlop() {
         Optional<GameStatus> gameStatus = pokerGameService.dealFlop();
@@ -93,4 +94,23 @@ public class PokerGameController {
         return winnerId != null ? ResponseEntity.ok("Game ended. Winner is: " + winnerId)
                 : ResponseEntity.badRequest().body("Game end failed or no winner.");
     }
+
+    @PostMapping("/reset")
+    public ResponseEntity<Void> resetGame() {
+        pokerGameService.resetGame(false);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/new-match")
+    public ResponseEntity<GameStatus> startNewMatch() {
+        GameStatus gameStatus = pokerGameService.startNewMatch();
+        if (gameStatus != null && !gameStatus.getPlayers().isEmpty()) {
+            return ResponseEntity.ok(gameStatus);
+        } else {
+            return ResponseEntity.badRequest().body(new GameStatus());
+        }
+    }
+
+
+
 }

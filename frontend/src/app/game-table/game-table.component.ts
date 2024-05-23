@@ -17,6 +17,7 @@ export class GameTableComponent implements OnInit {
   nonBotPlayer: Player | undefined;
   currentNonBotPlayerId: string = '';
   showModal: boolean = false;
+  gameResultMessage: string = '';
   playerActionTaken: boolean = false;
 
   @ViewChild(RaiseInputComponent) raiseInputComponent!: RaiseInputComponent;
@@ -39,7 +40,7 @@ export class GameTableComponent implements OnInit {
       next: (data) => {
         this.game = data;
         this.setCurrentNonBotPlayerId();
-        // Check if the non-bot player has folded to allow phase progression
+        this.sortPlayers();
         this.playerActionTaken = this.isFolded() || this.playerActionTaken;
       },
       error: (error: HttpErrorResponse) => {
@@ -47,6 +48,13 @@ export class GameTableComponent implements OnInit {
         alert('An error occurred while fetching game status. Please try again later.');
       }
     });
+  }
+
+  sortPlayers(): void {
+    const nonBotPlayers = this.game.players.filter(player => !player.name?.startsWith('Bot'));
+    const botPlayers = this.game.players.filter(player => player.name?.startsWith('Bot'));
+    this.game.players = [...botPlayers, ...nonBotPlayers];
+    this.nonBotPlayer = nonBotPlayers.length ? nonBotPlayers[0] : undefined;
   }
 
   getCardImage(card: Card): string {
@@ -116,13 +124,16 @@ export class GameTableComponent implements OnInit {
   }
 
   endGame(): void {
-    this.http.get<string>('http://localhost:8080/api/poker/end', { responseType: 'text' as 'json' }).subscribe({
-      next: (data) => {
-        alert(data);
-        this.getGameStatus();
+    this.http.get('http://localhost:8080/api/poker/end', { responseType: 'text' }).subscribe(
+      (response) => {
+        this.gameResultMessage = response;
+        this.showModal = true;
       },
-      error: (error) => console.error('Error ending game:', error)
-    });
+      (error) => {
+        this.gameResultMessage = 'Game end failed or no winner.';
+        this.showModal = true;
+      }
+    );
   }
 
   fold(): void {
@@ -133,8 +144,7 @@ export class GameTableComponent implements OnInit {
       this.http.post('http://localhost:8080/api/poker/fold', null, { params: params, responseType: 'text' }).subscribe({
         next: (response) => {
           console.log("Fold successful", response);
-          this.playerActionTaken = true; // Mark action as taken
-          // Immediately update the status to reflect the fold
+          this.playerActionTaken = true;
           this.getGameStatus();
         },
         error: (error) => console.error('Error during fold:', error)
@@ -153,16 +163,29 @@ export class GameTableComponent implements OnInit {
   }
 
   handleRaiseAction(): void {
-    this.playerActionTaken = true; // Mark action as taken when raise action is handled
+    this.playerActionTaken = true;
+    this.getGameStatus(); // Ensure we fetch the latest game status after a raise
   }
 
   handleCheckAction(): void {
-    this.playerActionTaken = true; // Mark action as taken when check action is handled
+    this.playerActionTaken = true;
   }
 
   allIn(): void {
-    this.raiseInputComponent.allIn();
-    this.playerActionTaken = true; // Mark action as taken
+    this.nonBotPlayer = this.game.players.find(player => !player.name?.startsWith('Bot'));
+    if (this.nonBotPlayer) {
+      const params = new HttpParams().set('playerId', this.nonBotPlayer.id);
+      this.http.post('http://localhost:8080/api/poker/bet', null, { params: params, responseType: 'text' }).subscribe({
+        next: (response) => {
+          console.log("All-in successful", response);
+          this.playerActionTaken = true;
+          this.getGameStatus();
+        },
+        error: (error) => console.error('Error during all-in:', error)
+      });
+    } else {
+      console.error('No non-bot player found');
+    }
   }
 
   closeModal(): void {
@@ -172,4 +195,34 @@ export class GameTableComponent implements OnInit {
   openModal(): void {
     this.showModal = true;
   }
+
+  resetGame(): void {
+    this.http.post('http://localhost:8080/api/poker/reset', {}).subscribe({
+      next: () => {
+        this.getGameStatus();
+        this.closeModal();
+      },
+      error: (error) => console.error('Error during game reset:', error)
+    });
+  }
+
+  startNewMatch(): void {
+    this.http.post<Game>('http://localhost:8080/api/poker/new-match', {}).subscribe({
+      next: (response) => {
+        if (response && response.players && response.players.length > 0) { // Check if response contains players
+          this.game = response;
+          this.playerActionTaken = false; // Reset player action flag
+          this.closeModal();
+        } else {
+          alert('No players with chips left or failed to start new match.');
+        }
+      },
+      error: (error: HttpErrorResponse) => {
+        console.error('Error during new match start:', error);
+        alert('An error occurred while starting a new match. Please try again later.');
+      }
+    });
+  }
+
+
 }

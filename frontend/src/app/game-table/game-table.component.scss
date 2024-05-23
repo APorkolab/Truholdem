@@ -1,270 +1,269 @@
+.game-table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #006400;
+  padding: 20px;
+  border-radius: 10px;
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.player {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.left,
+.top,
+.right,
+.user {
+  transition: transform 0.5s ease;
+}
+
+.left {
+  left: 0%;
+  top: 37%;
+  transform: translateY(-50%);
+}
+
+.right {
+  right: 0%;
+  top: 37%;
+  transform: translateY(-50%);
+}
+
+.top {
+  top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  flex-direction: row;
+}
+
+.user {
+  bottom: 19%;
+  left: 50%;
+  transform: translateX(-50%);
+  flex-direction: row;
+}
+
+.card,
+.community-cards .card {
+  width: 4rem;
+  height: 10rem;
+  border: 1px solid #000;
+  border-radius: 5px;
+  margin: 0 5px;
+  background-color: #ffff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.community-cards {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.actions button {
+  margin: 5px;
+  padding: 10px 20px;
+  border-radius: 5px;
+  background-color: #d4af37;
+  color: #000;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.actions button:hover {
+  background-color: #b29600;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.modal-content {
+  background-color: #fefefe;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 500px;
+  padding: 20px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+}
+
+.modal-header,
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.modal-body {
+  margin: 20px 0;
+}
+
+@media (max-width: 768px) {
+  .actions {
+    flex-direction: row;
+    justify-content: space-around;
+    padding: 5px;
+  }
+
+  .actions button {
+    padding: 8px 16px;
+  }
+}
+
+button {
+  background-color: #d4af37;
+  color: #000;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  margin-top: 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+button:hover {
+  background-color: #b29600;
+  transform: scale(1.1);
+}
+
+.modal {
+  animation: animatetop 0.4s;
+}
+
+@keyframes animatetop {
+  from {
+    top: -300px;
+    opacity: 0;
+  }
+
+  to {
+    top: 0;
+    opacity: 1;
+  }
+}
+
+.raise-input-box {
+  background: white;
+  padding: 20px;
+  border-radius: 5px;
+  z-index: 2222;
+  color: #000;
+}
+
+.logo-placeholder {
+  width: 100%;
+  height: 80px;
+  background: url('https://example.com/logo.png') no-repeat center center;
+  background-size: contain;
+  margin-bottom: 20px;
+}
+
+/* Mobil nézet (max-width: 768px) */
+@media (max-width: 768px) {
   .game-table {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background-color: #006400;
-    /* Rich casino green */
-    padding: 20px;
-    border-radius: 10px;
-    position: relative;
+    align-items: flex-start;
+    height: 42rem;
+  }
+
+  .player,
+  .community-cards {
+    position: static;
+    transform: none;
     width: 100%;
-    height: 100vh;
-    overflow: hidden;
   }
 
   .player {
-    position: absolute;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .left,
-  .top,
-  .right,
-  .user {
-    transition: transform 0.5s ease;
-  }
-
-  .left {
-    left: 0%;
-    top: 37%;
-    transform: translateX(0%);
-  }
-
-  .right {
-    top: 50%;
-    right: 0%;
-    transform: translateY(-50%);
-  }
-
-  .top {
-    top: 2rem;
-    left: 50%;
-    transform: translateX(-50%);
     flex-direction: row;
-  }
-
-  .user {
-    bottom: 25%;
-    left: 50%;
-    transform: translateX(-50%);
-    flex-direction: row;
+    width: 100%;
+    margin-bottom: 10px;
   }
 
   .card,
   .community-cards .card {
-    width: 4rem;
-    height: 10rem;
-    border: 1px solid #000;
-    border-radius: 5px;
-    margin: 0 5px;
-    background-color: #ffff;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    width: 50px;
+    height: 70px;
   }
 
   .community-cards {
     display: flex;
     flex-direction: row;
     justify-content: center;
-    position: absolute;
-    top: 40%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    margin-bottom: 20px;
+    padding-top: 10%;
   }
+}
 
-  .actions {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 10px;
+/* Normál és tablet nézetek (min-width: 768px) */
+@media (min-width: 768px) and (max-width: 1920px) {
+  .game-table {
     display: flex;
     flex-direction: column;
     align-items: center;
-    box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.4);
+    height: 72rem;
   }
 
-  .actions button {
-    margin: 5px;
-    padding: 10px 20px;
-    border-radius: 5px;
-    background-color: #d4af37;
-    color: #000;
-    border: none;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+  .card,
+  .community-cards .card {
+    width: 100px;
+    height: 145px;
   }
+}
 
-  .actions button:hover {
-    background-color: #b29600;
-  }
-
-  .modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+/* Ultra-wide monitorok (min-width: 1921px) */
+@media (min-width: 1921px) {
+  .game-table {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    padding: 20px;
-    box-sizing: border-box;
   }
 
-  .modal-content {
-    background-color: #fefefe;
-    border-radius: 10px;
-    width: 100%;
-    max-width: 500px;
-    padding: 20px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+  .card,
+  .community-cards .card {
+    width: 150px;
+    height: 220px;
   }
-
-  .modal-header,
-  .modal-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-
-  .modal-body {
-    margin: 20px 0;
-  }
-
-  @media (max-width: 768px) {
-    .actions {
-      flex-direction: row;
-      justify-content: space-around;
-      padding: 5px;
-    }
-
-    .actions button {
-      padding: 8px 16px;
-    }
-  }
-
-  button {
-    background-color: #d4af37;
-    color: #000;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    margin-top: 10px;
-    cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  button:hover {
-    background-color: #b29600;
-    transform: scale(1.1);
-  }
-
-  .modal {
-    animation: animatetop 0.4s;
-  }
-
-  @keyframes animatetop {
-    from {
-      top: -300px;
-      opacity: 0;
-    }
-
-    to {
-      top: 0;
-      opacity: 1;
-    }
-  }
-
-  .raise-input-box {
-    background: white;
-    padding: 20px;
-    border-radius: 5px;
-    z-index: 2222;
-    color: #000;
-  }
-
-  .logo-placeholder {
-    width: 100%;
-    height: 80px;
-    background: url('https://example.com/logo.png') no-repeat center center;
-    background-size: contain;
-    margin-bottom: 20px;
-  }
-
-  /* Mobil nézet (max-width: 768px) */
-  @media (max-width: 768px) {
-    .game-table {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      height: 42rem;
-    }
-
-    .player,
-    .community-cards {
-      position: static;
-      transform: none;
-      width: 100%;
-    }
-
-    .player {
-      display: flex;
-      flex-direction: row;
-      width: 100%;
-      margin-bottom: 10px;
-    }
-
-    .card,
-    .community-cards .card {
-      width: 50px;
-      height: 70px;
-    }
-
-    .community-cards {
-      display: flex;
-      flex-direction: row;
-      justify-content: center;
-      margin-bottom: 20px;
-      padding-top: 10%;
-    }
-  }
-
-  /* Normál és tablet nézetek (min-width: 769px) */
-  @media (min-width: 768px) and (max-width: 1920px) {
-    .game-table {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      height: 72rem;
-    }
-
-    .card,
-    .community-cards .card {
-      width: 100px;
-      height: 145px;
-    }
-  }
-
-  /* Ultra-wide monitorok (min-width: 1921px) */
-  @media (min-width: 1921px) {
-    .game-table {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .card,
-    .community-cards .card {
-      width: 150px;
-      height: 220px;
-    }
-  }
+}

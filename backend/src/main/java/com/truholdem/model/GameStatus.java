@@ -104,4 +104,7 @@ public class GameStatus {
         communityCards.clear();
     }
 
+    public void setPlayers(List<Player> players) {
+        this.players = players;
+    }
 }

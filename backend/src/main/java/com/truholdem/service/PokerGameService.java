@@ -1,10 +1,6 @@
 package com.truholdem.service;
 
-import com.truholdem.model.Card;
-import com.truholdem.model.Deck;
-import com.truholdem.model.GameStatus;
-import com.truholdem.model.Player;
-import com.truholdem.model.PlayerInfo;
+import com.truholdem.model.*;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -22,30 +18,32 @@ public class PokerGameService {
     private int pot;
 
     public PokerGameService() {
-        resetGame();
+        this.gameStatus = new GameStatus();
+        this.deck = new Deck();
+        resetGame(false);
     }
 
-    private void resetGame() {
-        this.deck = new Deck();
+    public boolean resetGame(boolean keepPlayers) {
         this.deck.shuffle();
-        this.gameStatus = new GameStatus();
         this.gameStatus.clearCommunityCards();
         gameStarted = false;
         currentBet = 0;
         pot = 0;
-        // Minden játékos kezét kiürítjük, de megtartjuk a játékosokat és a zsetonjaikat
-        gameStatus.getPlayers().forEach(Player::clearHand);
-        // További játék-specifikus állapotok alaphelyzetbe állítása, ha szükséges
+
+        if (!keepPlayers) {
+            gameStatus.getPlayers().clear();
+        } else {
+            gameStatus.getPlayers().forEach(Player::clearHand);
+        }
+
+        return true;
     }
 
-
     public GameStatus startGame(List<PlayerInfo> playersInfo) {
-        resetGame();
-        deck.shuffle();
+        resetGame(false);
 
-        // Ha a lista null vagy üres, akkor alapértelmezett tesztjátékosokat adunk hozzá
         if (playersInfo == null || playersInfo.isEmpty()) {
-            registerPlayer("Anna", 1000, false); // Feltételezve, hogy Anna egy valódi játékos 1000 kezdő zsetonnal
+            registerPlayer("Anna", 1000, false);
             registerPlayer("BotBéla", 1000, true);
             registerPlayer("BotCili", 1000, true);
             registerPlayer("BotJuli", 1000, true);
@@ -57,7 +55,6 @@ public class PokerGameService {
 
         setBlinds();
         dealInitialCards();
-        makeBotDecisions();
         gameStatus.setPhase(GameStatus.GamePhase.PRE_FLOP);
         gameStarted = true;
         return gameStatus;
@@ -76,7 +73,6 @@ public class PokerGameService {
         }
     }
 
-
     private void dealInitialCards() {
         gameStatus.getPlayers().forEach(player -> {
             player.clearHand();
@@ -86,18 +82,12 @@ public class PokerGameService {
         });
     }
 
-    private void rotateBlinds() {
-        Collections.rotate(gameStatus.getPlayers(), -1);
-        // Újra beállítja a vakokat a következő körre
-        setBlinds();
-    }
-
     public boolean registerPlayer(String playerName, int startingChips, boolean isBot) {
-        if (!gameStarted && gameStatus.getPlayers().size() < 4) { // Max 4 játékos
+        if (!gameStarted && gameStatus.getPlayers().size() < 4) {
             Player newPlayer = new Player(playerName);
             newPlayer.setChips(startingChips);
             if (isBot) {
-                newPlayer.setName("Bot" + playerName); // Bot játékosok esetén a névhez "Bot" előtag hozzáadása
+                newPlayer.setName("Bot" + playerName);
             } else {
                 newPlayer.setName(playerName);
             }
@@ -107,41 +97,27 @@ public class PokerGameService {
         return false;
     }
 
-
-    private void addBots() {
-        for (int i = 1; i <= 3; i++) { // Mindig 3 bot hozzáadása
-            gameStatus.getPlayers().add(new Player("Bot " + i));
-        }
-    }
-
-    // Deal the flop
     public Optional<GameStatus> dealFlop() {
         if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.PRE_FLOP) {
-            setBlinds();
             performFlop();
-            makeBotDecisions();
             gameStatus.setPhase(GameStatus.GamePhase.FLOP);
             return Optional.of(gameStatus);
         }
         return Optional.empty();
     }
 
-    // Deal the turn
     public Optional<GameStatus> dealTurn() {
         if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.FLOP) {
             performTurn();
-            makeBotDecisions();
             gameStatus.setPhase(GameStatus.GamePhase.TURN);
             return Optional.of(gameStatus);
         }
         return Optional.empty();
     }
 
-    // Deal the river
     public Optional<GameStatus> dealRiver() {
         if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.TURN) {
             performRiver();
-            makeBotDecisions();
             gameStatus.setPhase(GameStatus.GamePhase.RIVER);
             return Optional.of(gameStatus);
         }
@@ -149,20 +125,17 @@ public class PokerGameService {
     }
 
     public boolean playerFold(String playerId) {
-        // Megkeressük a játékost az ID alapján.
         Player player = findPlayerById(playerId);
 
-        // Ellenőrizzük, hogy a játékos létezik-e és még nem passzolt-e.
         if (player != null && !player.isFolded()) {
             player.setFolded(true);
             checkForEarlyWin();
 
-            return true; // Sikeres passzolás
+            return true;
         }
 
-        return false; // Nem sikerült passzolni (pl. a játékos nem létezik, vagy már passzolt)
+        return false;
     }
-
 
     private void performFlop() {
         deck.drawCard(); // Burn
@@ -171,41 +144,34 @@ public class PokerGameService {
             flop.add(deck.drawCard());
         }
         gameStatus.setCommunityCards(flop);
-        makeBotDecisions();
     }
 
     private void performTurn() {
         deck.drawCard(); // Burn
         Card turnCard = deck.drawCard();
         gameStatus.addCardToCommunity(turnCard);
-        makeBotDecisions();
     }
 
     private void performRiver() {
         deck.drawCard(); // Burn
         Card riverCard = deck.drawCard();
         gameStatus.addCardToCommunity(riverCard);
-        makeBotDecisions();
     }
 
-    // Játékos tétje és passzolása
     public boolean playerBet(String playerId, int amount) {
         Player player = findPlayerById(playerId);
-        if (gameStarted && player != null && amount >= gameStatus.getCurrentBet() && player.getChips() >= amount) {
-            if (amount > gameStatus.getCurrentBet()) {
-                gameStatus.setCurrentBet(amount);
+        if (gameStarted && player != null && amount >= currentBet && player.getChips() >= amount) {
+            if (amount > currentBet) {
+                currentBet = amount;
             }
             player.setChips(player.getChips() - amount);
-            player.setBetAmount(amount); // Frissítjük a játékos tétjét
-            gameStatus.setCurrentPot(gameStatus.getCurrentPot() + amount);
-            System.out.println("Bet placed: " + playerId + " bet " + amount);
+            player.setBetAmount(amount);
+            pot += amount;
             return true;
         } else {
-            System.out.println("Bet failed: " + (player == null ? "Player not found" : "Invalid bet - Current Bet: " + gameStatus.getCurrentBet() + ", Player Chips: " + (player != null ? player.getChips() : "N/A")) + " by " + playerId);
             return false;
         }
     }
-
 
     public void checkForEarlyWin() {
         long activePlayers = gameStatus.getPlayers().stream().filter(p -> !p.isFolded()).count();
@@ -214,7 +180,6 @@ public class PokerGameService {
         }
     }
 
-
     private void endGameEarly() {
         Player winner = gameStatus.getPlayers().stream()
                 .filter(p -> !p.isFolded())
@@ -222,11 +187,7 @@ public class PokerGameService {
                 .orElse(null);
         if (winner != null) {
             winner.addWinnings(pot);
-            // Logika a győztes bejelentésére és a játék állapotának frissítésére
-            System.out.println("Game ended early. Winner is: " + winner.getId() + " with pot: " + pot);
-
-            // Játék újraindítása vagy befejezése
-            resetGame();
+            resetGame(false);
         }
     }
 
@@ -234,11 +195,8 @@ public class PokerGameService {
         if (gameStarted) {
             String winnerId = determineWinner();
             gameStarted = false;
-            dealInitialCards(); // Újraindítja a játékot a következő körre
-            rotateBlinds();
-            resetGame();
+            resetGame(false);
             return winnerId;
-
         }
         return null;
     }
@@ -250,7 +208,6 @@ public class PokerGameService {
                 .allMatch(p -> p.getBetAmount() == expectedBet);
     }
 
-    // Következő kör vagy játék vége
     private void proceedToNextRound() {
         if (areAllBetsEqual()) {
             switch (gameStatus.getPhase()) {
@@ -268,7 +225,7 @@ public class PokerGameService {
                     break;
                 case RIVER:
                     determineWinner();
-                    resetGame();
+                    resetGame(false);
                     break;
             }
         }
@@ -288,30 +245,13 @@ public class PokerGameService {
                 }));
 
         if (winner.isPresent()) {
-            // Megvan a győztes, hozzáadjuk a nyereményt és kiírjuk az üzenetet
             Player winningPlayer = winner.get();
             winningPlayer.addWinnings(pot);
-            System.out.println("Winner is: " + winningPlayer.getId() + " with pot: " + pot);
+            return winningPlayer.getId();
         }
 
-        resetGame(); // Újraindítjuk a játékot a következő körre
+        resetGame(false);
         return winner.map(Player::getId).orElse("");
-    }
-
-    private int compareHighCard(HandResult hand1, HandResult hand2) {
-        List<Card> cards1 = hand1.getCards();
-        List<Card> cards2 = hand2.getCards();
-
-        // A lapokat értékek alapján hasonlítjuk össze, kezdve a legmagasabbal
-        for (int i = cards1.size() - 1; i >= 0; i--) {
-            int compare = cards2.get(i).getValue().ordinal() - cards1.get(i).getValue().ordinal();
-            if (compare != 0) {
-                // Ha találunk különbséget, akkor visszatérünk az összehasonlítás eredményével
-                return compare;
-            }
-        }
-        // Ha az összes lap megegyezik, akkor döntetlen van
-        return 0;
     }
 
     private Player findPlayerById(String playerId) {
@@ -321,31 +261,19 @@ public class PokerGameService {
                 .orElse(null);
     }
 
-    private void makeBotDecisions() {
-        Random random = new Random();
-        gameStatus.getPlayers().stream()
-                .filter(player -> player.getId().startsWith("Bot") && !player.isFolded())
-                .forEach(player -> {
-                    int minBet = Math.max(gameStatus.getCurrentBet(), 20);
-                    int bet = minBet + random.nextInt(100);
-                    if (player.getChips() >= bet) {
-                        playerBet(player.getId(), bet);
-                    } else {
-                        playerFold(player.getId());
-                    }
-                });
-    }
-
-
-    // Pot növelése validálással
-    public void addToPot(int amount) {
-        if (amount < 0) {
-            throw new IllegalArgumentException("Amount cannot be negative.");
+    public GameStatus startNewMatch() {
+        List<Player> players = new ArrayList<>(gameStatus.getPlayers());
+        players.removeIf(player -> player.getChips() <= 0);
+        if (players.isEmpty()) {
+            return null; // No players with chips left
         }
-        gameStatus.setCurrentPot(gameStatus.getCurrentPot() + amount);
-    }
-
-    public void updateCurrentBet(int newBet) {
-        gameStatus.setCurrentBet(newBet);
+        resetGame(true);
+        this.deck.shuffle();
+        gameStatus.setPlayers(players); // Add remaining players
+        dealInitialCards();
+        setBlinds();
+        gameStatus.setPhase(GameStatus.GamePhase.PRE_FLOP);
+        gameStarted = true;
+        return gameStatus;
     }
 }
