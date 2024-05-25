@@ -7,7 +7,7 @@
 				<input type="number" [(ngModel)]="player.startingChips" [name]="'startingChips' + i"
 					placeholder="Starting Chips" required>
 				<label>
-					<input type="checkbox" [(ngModel)]="player.isBot" [name]="'isBot' + i" [checked]='true'> Is Bot?
+					<input type="checkbox" [(ngModel)]="player.isBot" [name]="'isBot' + i"> Is Bot?
 				</label>
 				<button class="remove-btn" (click)="removePlayer(i)" type="button">Remove</button>
 			</div>

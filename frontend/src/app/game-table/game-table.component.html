@@ -1,10 +1,10 @@
 <div class="game-table">
 	<div *ngFor="let player of game?.players; let i = index" [ngClass]="{
-	      'user': !player.name.startsWith('Bot'),
-	      'left': player.name.startsWith('Bot') && (i % 3 === 1),
-	      'top': player.name.startsWith('Bot') && (i % 3 === 2),
-	      'right': player.name.startsWith('Bot') && (i % 3 === 0)
-	    }" class="player">
+        'user': player.name && !player.name.startsWith('Bot'),
+        'left': player.name && player.name.startsWith('Bot') && (i % 3 === 1),
+        'top': player.name && player.name.startsWith('Bot') && (i % 3 === 2),
+        'right': player.name && player.name.startsWith('Bot') && (i % 3 === 0)
+      }" class="player">
 		<div *ngFor="let card of player.hand" class="card">
 			<img *ngIf="(!player.folded || player.chips <= 0) && (game?.phase === 'RIVER' || !player.name?.startsWith('Bot'))"
 				[src]="getCardImage(card)" [alt]="card.value + ' of ' + card.suit" class="card-image">
@@ -53,3 +53,4 @@
 			</div>
 		</div>
 	</div>
+</div>

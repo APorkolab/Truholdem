@@ -16,7 +16,6 @@ public class PokerGameService {
     private boolean gameStarted;
     private int currentBet;
     private int pot;
-    private List<PlayerInfo> initialPlayersInfo = new ArrayList<>();
 
     public PokerGameService() {
         this.gameStatus = new GameStatus();
@@ -32,22 +31,8 @@ public class PokerGameService {
         pot = 0;
 
         if (!keepPlayers) {
-            // Új játék esetén inicializáljuk újra a játékosokat
-            if (initialPlayersInfo.isEmpty()) {
-                initialPlayersInfo.add(new PlayerInfo("Anna", 1000, false));
-                initialPlayersInfo.add(new PlayerInfo("BotBéla", 1000,true));
-                initialPlayersInfo.add(new PlayerInfo("BotCili", 1000,true));
-                initialPlayersInfo.add(new PlayerInfo("BotJuli", 1000,true));
-            }
             gameStatus.getPlayers().clear();
-            for (PlayerInfo playerInfo : initialPlayersInfo) {
-                Player newPlayer = new Player(playerInfo.getName());
-                newPlayer.setChips(playerInfo.getStartingChips());
-                newPlayer.setFolded(false);
-                gameStatus.addPlayer(newPlayer);
-            }
         } else {
-            // Új meccs esetén csak a folded állapotot állítjuk vissza
             for (Player player : gameStatus.getPlayers()) {
                 player.clearHand();
                 player.setFolded(false);
@@ -57,15 +42,11 @@ public class PokerGameService {
         return true;
     }
 
+
     public GameStatus startGame(List<PlayerInfo> playersInfo) {
         resetGame(false);
 
-        if (playersInfo == null || playersInfo.isEmpty()) {
-            registerPlayer("Anna", 1000, false);
-            registerPlayer("BotBéla", 1000, true);
-            registerPlayer("BotCili", 1000, true);
-            registerPlayer("BotJuli", 1000, true);
-        } else {
+        if (playersInfo != null && !playersInfo.isEmpty()) {
             for (PlayerInfo playerInfo : playersInfo) {
                 registerPlayer(playerInfo.getName(), playerInfo.getStartingChips(), playerInfo.isBot());
             }
@@ -100,10 +81,12 @@ public class PokerGameService {
         });
     }
 
+
     public boolean registerPlayer(String playerName, int startingChips, boolean isBot) {
         if (!gameStarted && gameStatus.getPlayers().size() < 4) {
             Player newPlayer = new Player(playerName);
             newPlayer.setChips(startingChips);
+            newPlayer.setFolded(false);
             if (isBot) {
                 newPlayer.setName("Bot" + playerName);
             } else {
@@ -114,6 +97,11 @@ public class PokerGameService {
         }
         return false;
     }
+
+    public GameStatus getGameStatus() {
+        return gameStarted ? gameStatus : null;
+    }
+
 
     public Optional<GameStatus> dealFlop() {
         if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.PRE_FLOP) {
@@ -249,9 +237,6 @@ public class PokerGameService {
         }
     }
 
-    public GameStatus getGameStatus() {
-        return gameStarted ? gameStatus : null;
-    }
 
     private String determineWinner() {
         HandEvaluator evaluator = new HandEvaluator();
