@@ -2,17 +2,25 @@ package com.truholdem.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class Player {
+    private int startingChips;
     private String id;
     private String name;
     private List<Card> hand = new ArrayList<>();
     private int chips = 1000; // Kezdő zsetonok
     private int betAmount = 0; // Jelenlegi tét
-    private boolean folded = false; // Jelzi, hogy a játékos passzolt-e
+    private boolean isFolded = false; // Jelzi, hogy a játékos passzolt-e
 
-    public Player(String id) {
-        this.id = id;
+    public Player(String name, int startingChips) {
+        this.id = UUID.randomUUID().toString();
+        this.name = name;
+        this.startingChips = startingChips;
+        this.chips = startingChips; // Initialize with starting chips
+        this.isFolded = false;
+        this.hand = new ArrayList<>();
+        this.betAmount = 0;
     }
 
     // Tét emelése
@@ -62,11 +70,10 @@ public class Player {
     }
 
     public boolean isFolded() {
-        return folded;
+        return isFolded;
     }
 
     public void setFolded(boolean folded) {
-        this.folded = folded;
     }
 
     public void clearHand() {
@@ -84,7 +91,7 @@ public class Player {
     // A játékos állapotának JSON formátumban való kiíratása
     public String toJson() {
         return String.format("{\"id\":\"%s\", \"hand\":%s, \"chips\":%d, \"betAmount\":%d, \"isFolded\":%b}",
-                id, hand.toString(), chips, betAmount, folded);
+                id, hand.toString(), chips, betAmount, isFolded);
     }
 
     // További setterek
@@ -103,7 +110,15 @@ public class Player {
                 ", hand=" + hand +
                 ", chips=" + chips +
                 ", betAmount=" + betAmount +
-                ", folded=" + folded +
+                ", isFolded=" + isFolded +
                 '}';
+    }
+
+    public int getStartingChips() {
+        return startingChips;
+    }
+
+    public void setStartingChips(int startingChips) {
+        this.startingChips = startingChips;
     }
 }

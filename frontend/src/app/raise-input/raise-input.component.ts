@@ -149,7 +149,7 @@ export class RaiseInputComponent implements OnInit {
         player.startingChips = 1000; // Reset all players' chips to default
       });
 
-      this.http.post('http://localhost:8080/api/poker/reset-game', this.players).subscribe({
+      this.http.post('http://localhost:8080/api/poker/reset', this.players).subscribe({
         next: (response) => {
           console.log(response);
           window.location.href = '/start';
