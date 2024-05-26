@@ -35,7 +35,7 @@ export class RaiseInputComponent implements OnInit {
 
   async setMaxRaiseAmount(): Promise<void> {
     this.maxRaiseAmount = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'))?.chips || 10;
-    this.currentBet = this.game?.players.reduce((max, player) => player.currentBet > max ? player.currentBet : max, 0) || 0;
+    this.currentBet = this.game?.players.reduce((max, player) => player.betAmount > max ? player.betAmount : max, 0) || 0;
     console.log(this.game?.players);
   }
 
@@ -88,7 +88,7 @@ export class RaiseInputComponent implements OnInit {
     const currentPlayer = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'));
     if (currentPlayer) {
       // Check if the current player's bet equals the highest bet or if the player is all-in
-      if (currentPlayer.currentBet === this.currentBet || currentPlayer.chips === 0) {
+      if (currentPlayer.betAmount === this.currentBet || currentPlayer.chips === 0) {
         this.isRaiseInputVisible = false;
         this.actionTaken.emit(); // Esemény kibocsátása a check gombbal
       } else {

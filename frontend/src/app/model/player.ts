@@ -5,7 +5,7 @@ export interface Player {
 	name: string;
 	hand: Card[];
 	chips: number;
-	currentBet: number;
+	betAmount: number;
 	folded: boolean;
 	isBot: boolean;
 }

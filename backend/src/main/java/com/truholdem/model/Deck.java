@@ -25,10 +25,10 @@ public class Deck {
 
     // Egy kártya húzása a pakliból
     public Card drawCard() {
-        if (!cards.isEmpty()) {
-            return cards.remove(0);
+        if (cards.isEmpty()) {
+            resetDeck();  // Új pakli inicializálása és keverése, ha az aktuális pakli üres
         }
-        throw new NoSuchElementException("The deck is empty. Cannot draw a card.");
+        return cards.remove(0);
     }
 
     // A pakliban maradt kártyák számának lekérdezése

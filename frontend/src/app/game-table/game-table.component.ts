@@ -19,6 +19,7 @@ export class GameTableComponent implements OnInit {
   showModal: boolean = false;
   gameResultMessage: string = '';
   playerActionTaken: boolean = false;
+  currentPot = 0;
 
   @ViewChild(RaiseInputComponent) raiseInputComponent!: RaiseInputComponent;
   @ViewChild('raiseModal') raiseModal!: ElementRef;
@@ -42,6 +43,7 @@ export class GameTableComponent implements OnInit {
         this.setCurrentNonBotPlayerId();
         this.sortPlayers();
         this.playerActionTaken = this.isFolded() || this.playerActionTaken;
+        this.updateCurrentPot(); // Update pot on game status fetch
       },
       error: (error: HttpErrorResponse) => {
         if (error.status === 404) {
@@ -97,7 +99,10 @@ export class GameTableComponent implements OnInit {
   dealFlop(): void {
     if (this.playerActionTaken) {
       this.http.get('http://localhost:8080/api/poker/flop').subscribe({
-        next: () => this.getGameStatus(),
+        next: () => {
+          this.getGameStatus();
+          this.updateCurrentPot(); // Update pot on deal flop
+        },
         error: (error) => console.error('Error during dealing the flop:', error)
       });
     } else {
@@ -108,7 +113,10 @@ export class GameTableComponent implements OnInit {
   dealTurn(): void {
     if (this.playerActionTaken) {
       this.http.get('http://localhost:8080/api/poker/turn').subscribe({
-        next: () => this.getGameStatus(),
+        next: () => {
+          this.getGameStatus();
+          this.updateCurrentPot(); // Update pot on deal turn
+        },
         error: (error) => console.error('Error during dealing the turn:', error)
       });
     } else {
@@ -119,7 +127,10 @@ export class GameTableComponent implements OnInit {
   dealRiver(): void {
     if (this.playerActionTaken) {
       this.http.get('http://localhost:8080/api/poker/river').subscribe({
-        next: () => this.getGameStatus(),
+        next: () => {
+          this.getGameStatus();
+          this.updateCurrentPot(); // Update pot on deal river
+        },
         error: (error) => console.error('Error during dealing the river:', error)
       });
     } else {
@@ -132,10 +143,12 @@ export class GameTableComponent implements OnInit {
       (response) => {
         this.gameResultMessage = response;
         this.showModal = true;
+        this.updateCurrentPot(); // Update pot on end game
       },
       (error) => {
         this.gameResultMessage = 'Game end failed or no winner.';
         this.showModal = true;
+        this.updateCurrentPot(); // Update pot on end game error
       }
     );
   }
@@ -150,6 +163,7 @@ export class GameTableComponent implements OnInit {
           console.log("Fold successful", response);
           this.playerActionTaken = true;
           this.getGameStatus();
+          this.updateCurrentPot(); // Update pot on fold
         },
         error: (error) => console.error('Error during fold:', error)
       });
@@ -168,11 +182,22 @@ export class GameTableComponent implements OnInit {
 
   handleRaiseAction(): void {
     this.playerActionTaken = true;
-    this.getGameStatus(); // Ensure we fetch the latest game status after a raise
+    this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
+      next: (data) => {
+        this.game = data;
+        this.setCurrentNonBotPlayerId();
+        this.sortPlayers();
+        this.updateCurrentPot(); // Update pot on raise action
+      },
+      error: (error) => {
+        console.error('Error fetching game status:', error);
+      }
+    });
   }
 
   handleCheckAction(): void {
     this.playerActionTaken = true;
+    this.updateCurrentPot(); // Update pot on check action
   }
 
   allIn(): void {
@@ -183,13 +208,31 @@ export class GameTableComponent implements OnInit {
         next: (response) => {
           console.log("All-in successful", response);
           this.playerActionTaken = true;
-          this.getGameStatus();
+          this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
+            next: (data) => {
+              this.game = data;
+              this.setCurrentNonBotPlayerId();
+              this.sortPlayers();
+              this.updateCurrentPot(); // Update pot on all-in action
+            },
+            error: (error) => {
+              console.error('Error fetching game status:', error);
+            }
+          });
         },
         error: (error) => console.error('Error during all-in:', error)
       });
     } else {
       console.error('No non-bot player found');
     }
+  }
+
+  calculateCurrentPot(): number {
+    return this.game.players.reduce((total, player) => total + (player.betAmount || 0), 0);
+  }
+
+  updateCurrentPot(): void {
+    this.currentPot = this.calculateCurrentPot();
   }
 
   closeModal(): void {
@@ -205,6 +248,7 @@ export class GameTableComponent implements OnInit {
       next: () => {
         this.getGameStatus();
         this.closeModal();
+        this.updateCurrentPot(); // Update pot on reset game
       },
       error: (error) => console.error('Error during game reset:', error)
     });
@@ -224,6 +268,7 @@ export class GameTableComponent implements OnInit {
             this.game = response;
             this.playerActionTaken = false; // Reset player action flag
             this.closeModal();
+            this.updateCurrentPot(); // Update pot on new match
           } else {
             alert('No players with chips left or failed to start new match.');
           }
@@ -243,6 +288,7 @@ export class GameTableComponent implements OnInit {
           this.game = response;
           this.playerActionTaken = false; // Reset player action flag
           this.closeModal();
+          this.updateCurrentPot(); // Update pot on new game
         } else {
           alert('Failed to start new game.');
         }

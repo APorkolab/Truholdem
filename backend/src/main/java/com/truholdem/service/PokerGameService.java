@@ -26,11 +26,15 @@ public class PokerGameService {
     public boolean resetGame(boolean keepPlayers) {
         this.deck.shuffle();
         this.gameStatus.clearCommunityCards();
+
         gameStarted = false;
         currentBet = 0;
         pot = 0;
 
         if (!keepPlayers) {
+            for (Player player : gameStatus.getPlayers()) {
+                player.setFolded(false);
+            }
             gameStatus.getPlayers().clear();
         } else {
             for (Player player : gameStatus.getPlayers()) {
