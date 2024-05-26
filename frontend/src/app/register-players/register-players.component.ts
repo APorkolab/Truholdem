@@ -16,14 +16,14 @@ export class RegisterPlayersComponent {
   maxBotPlayers = 3;
   maxHumanPlayers = 1;
   players: PlayerInfo[] = [
-    { name: '', startingChips: 1000, isBot: false }
+    { name: '', startingChips: 1000, isBot: true }
   ];
 
   constructor(private http: HttpClient) { }
 
   addPlayer(): void {
     if (this.players.length < this.maxBotPlayers + this.maxHumanPlayers) {
-      this.players.push({ name: '', startingChips: 1000, isBot: false });
+      this.players.push({ name: '', startingChips: 1000, isBot: true });
     }
   }
 
