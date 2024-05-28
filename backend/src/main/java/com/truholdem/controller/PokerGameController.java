@@ -51,7 +51,10 @@ public class PokerGameController {
     }
 
     @PostMapping("/bet")
-    public ResponseEntity<Map<String, String>> playerBet(@RequestParam String playerId, @RequestParam int amount) {
+    public ResponseEntity<Map<String, String>> playerBet(@RequestBody Map<String, Object> payload) {
+        String playerId = (String) payload.get("playerId");
+        int amount = (int) payload.get("amount");
+
         boolean betPlaced = pokerGameService.playerBet(playerId, amount);
         Map<String, String> response = new HashMap<>();
         if (betPlaced) {

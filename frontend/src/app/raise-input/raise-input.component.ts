@@ -54,15 +54,16 @@ export class RaiseInputComponent implements OnInit {
     if (currentPlayerId && raiseAmount > 0) {
       if (raiseAmount <= currentPlayer!.chips) {
         const headers = new HttpHeaders({
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json',
         });
 
-        const body = new HttpParams()
-          .set('playerId', currentPlayerId)
-          .set('amount', raiseAmount.toString());
+        const body = {
+          playerId: currentPlayerId,
+          amount: raiseAmount
+        };
 
         try {
-          const response = await this.http.post('http://localhost:8080/api/poker/bet', body.toString(), { headers }).toPromise();
+          const response = await this.http.post('http://localhost:8080/api/poker/bet', body, { headers }).toPromise();
           this.getGameStatus();
           this.actionTaken.emit(); // Esemény kibocsátása
         } catch (error) {

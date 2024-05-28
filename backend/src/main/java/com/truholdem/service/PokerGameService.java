@@ -17,11 +17,13 @@ public class PokerGameService {
     private int currentBet;
     private int pot;
     private int dealerPosition; // Dealer pozíció nyomon követésére
+    private Map<String, Boolean> playerActions;
 
     public PokerGameService() {
         this.gameStatus = new GameStatus();
         this.deck = new Deck();
         resetGame(false);
+        this.playerActions = new HashMap<>();
     }
 
     public boolean resetGame(boolean keepPlayers) {
@@ -44,6 +46,7 @@ public class PokerGameService {
                 player.setFolded(false);
                 player.setBetAmount(0); // Bet amount reset
                 player.setChips(player.getStartingChips()); // Kezdeti vagyon beállítása újraindításkor
+                playerActions.put(player.getId(), false);
             }
         }
 
@@ -91,6 +94,7 @@ public class PokerGameService {
             player.setChips(player.getChips() - amount);
             player.setBetAmount(amount);
             pot += amount;
+            playerActions.put(player.getId(), true);
         }
     }
 
@@ -100,6 +104,7 @@ public class PokerGameService {
             for (int i = 0; i < 2; i++) {
                 player.addCardToHand(deck.drawCard());
             }
+            playerActions.put(player.getId(), false);
         });
     }
 
@@ -122,28 +127,35 @@ public class PokerGameService {
         return gameStarted ? gameStatus : null;
     }
 
+    private boolean allPlayersActed() {
+        return playerActions.values().stream().allMatch(actionTaken -> actionTaken);
+    }
+
     public Optional<GameStatus> dealFlop() {
-        if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.PRE_FLOP) {
+        if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.PRE_FLOP && allPlayersActed()) {
             performFlop();
             gameStatus.setPhase(GameStatus.GamePhase.FLOP);
+            resetPlayerActions();
             return Optional.of(gameStatus);
         }
         return Optional.empty();
     }
 
     public Optional<GameStatus> dealTurn() {
-        if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.FLOP) {
+        if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.FLOP && allPlayersActed()) {
             performTurn();
             gameStatus.setPhase(GameStatus.GamePhase.TURN);
+            resetPlayerActions();
             return Optional.of(gameStatus);
         }
         return Optional.empty();
     }
 
     public Optional<GameStatus> dealRiver() {
-        if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.TURN) {
+        if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.TURN && allPlayersActed()) {
             performRiver();
             gameStatus.setPhase(GameStatus.GamePhase.RIVER);
+            resetPlayerActions();
             return Optional.of(gameStatus);
         }
         return Optional.empty();
@@ -155,7 +167,8 @@ public class PokerGameService {
         if (player != null && !player.isFolded()) {
             player.setFolded(true);
             checkForEarlyWin();
-
+            playerActions.put(playerId, true);
+            proceedToNextRound();
             return true;
         }
 
@@ -190,6 +203,8 @@ public class PokerGameService {
             player.setBetAmount(player.getBetAmount() + amount);
             pot += amount;
             currentBet = amount; // Update the current bet to the new bet
+            playerActions.put(playerId, true);
+            proceedToNextRound();
             return true;
         } else {
             return false;
@@ -232,7 +247,13 @@ public class PokerGameService {
     }
 
     private void proceedToNextRound() {
-        if (areAllBetsEqual()) {
+        gameStatus.getPlayers().forEach(player -> {
+            if (!playerActions.get(player.getId()) && player.getName().startsWith("Bot")) {
+                automateBotAction(player);
+            }
+        });
+
+        if (areAllBetsEqual() && allPlayersActed()) {
             switch (gameStatus.getPhase()) {
                 case PRE_FLOP:
                     performFlop();
@@ -251,6 +272,7 @@ public class PokerGameService {
                     resetGame(false);
                     break;
             }
+            resetPlayerActions();
         }
     }
 
@@ -296,5 +318,54 @@ public class PokerGameService {
         gameStatus.setPhase(GameStatus.GamePhase.PRE_FLOP);
         gameStarted = true;
         return gameStatus;
+    }
+
+    private void automateBotAction(Player bot) {
+        Random rand = new Random();
+        int action = rand.nextInt(3);
+
+        switch (action) {
+            case 0:
+                playerFold(bot.getId());
+                break;
+            case 1:
+                if (bot.getChips() >= currentBet) {
+                    playerBet(bot.getId(), currentBet);
+                } else {
+                    playerFold(bot.getId());
+                }
+                break;
+            case 2:
+                int raiseAmount = currentBet + rand.nextInt(100);
+                if (bot.getChips() >= raiseAmount) {
+                    playerRaise(bot.getId(), raiseAmount);
+                } else if (bot.getChips() >= currentBet) {
+                    playerBet(bot.getId(), currentBet);
+                } else {
+                    playerFold(bot.getId());
+                }
+                break;
+        }
+        playerActions.put(bot.getId(), true); // Update playerActions after bot action
+    }
+
+    private void resetPlayerActions() {
+        playerActions.replaceAll((id, actionTaken) -> false);
+    }
+
+    public synchronized boolean playerRaise(String playerId, int amount) {
+        Player player = findPlayerById(playerId);
+        if (gameStarted && player != null && amount > currentBet && player.getChips() >= amount) {
+            int raiseAmount = amount - player.getBetAmount();
+            player.setChips(player.getChips() - raiseAmount);
+            player.setBetAmount(amount);
+            pot += raiseAmount;
+            currentBet = amount;
+            playerActions.put(playerId, true);
+            proceedToNextRound();
+            return true;
+        } else {
+            return false;
+        }
     }
 }
