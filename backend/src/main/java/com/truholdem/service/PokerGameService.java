@@ -156,11 +156,22 @@ public class PokerGameService {
     }
 
     public Optional<GameStatus> dealRiver() {
-        if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.TURN && allPlayersActed() && areAllBetsEqual()) {
-            performRiver();
-            gameStatus.setPhase(GameStatus.GamePhase.RIVER);
-            resetPlayerActions();
-            return Optional.of(gameStatus);
+        if (gameStarted) {
+            if (gameStatus.getPhase() != GameStatus.GamePhase.TURN) {
+                System.out.println("Error: Game is not in TURN phase");
+            }
+            if (!allPlayersActed()) {
+                System.out.println("Error: Not all players have acted");
+            }
+            if (!areAllBetsEqual()) {
+                System.out.println("Error: Not all bets are equal");
+            }
+            if (gameStatus.getPhase() == GameStatus.GamePhase.TURN && allPlayersActed() && areAllBetsEqual()) {
+                performRiver();
+                gameStatus.setPhase(GameStatus.GamePhase.RIVER);
+                resetPlayerActions();
+                return Optional.of(gameStatus);
+            }
         }
         return Optional.empty();
     }
@@ -249,11 +260,17 @@ public class PokerGameService {
         return null;
     }
 
+
     private boolean areAllBetsEqual() {
         int expectedBet = currentBet;
-        return gameStatus.getPlayers().stream()
-                .filter(p -> !p.isFolded())
-                .allMatch(p -> p.getBetAmount() == expectedBet);
+        boolean allEqual = true;
+        for (Player player : gameStatus.getPlayers()) {
+            if (!player.isFolded() && player.getBetAmount() != expectedBet) {
+                System.out.println("Player " + player.getName() + " has bet " + player.getBetAmount() + " which is not equal to the expected bet " + expectedBet);
+                allEqual = false;
+            }
+        }
+        return allEqual;
     }
 
     private void proceedToNextRound() {
@@ -262,6 +279,8 @@ public class PokerGameService {
                 automateBotAction(player);
             }
         });
+
+        ensureBotsMatchBets(); // Ensure bots place the correct bets
 
         if (areAllBetsEqual() && allPlayersActed()) {
             switch (gameStatus.getPhase()) {
@@ -331,32 +350,20 @@ public class PokerGameService {
     }
 
     private void automateBotAction(Player bot) {
-        Random rand = new Random();
-        int action = rand.nextInt(3);
-
-        switch (action) {
-            case 0:
-                playerFold(bot.getId());
-                break;
-            case 1:
-                if (bot.getChips() >= currentBet) {
-                    playerBet(bot.getId(), currentBet);
-                } else {
-                    playerFold(bot.getId());
-                }
-                break;
-            case 2:
-                int raiseAmount = currentBet + rand.nextInt(50);
-                if (bot.getChips() >= raiseAmount) {
-                    playerRaise(bot.getId(), raiseAmount);
-                } else if (bot.getChips() >= currentBet) {
-                    playerBet(bot.getId(), currentBet);
-                } else {
-                    playerFold(bot.getId());
-                }
-                break;
+        if (bot.getChips() >= currentBet) {
+            playerBet(bot.getId(), currentBet);
+        } else {
+            playerFold(bot.getId());
         }
         playerActions.put(bot.getId(), true); // Update playerActions after bot action
+    }
+
+    private void ensureBotsMatchBets() {
+        for (Player player : gameStatus.getPlayers()) {
+            if (!player.isFolded() && player.getName().startsWith("Bot") && player.getBetAmount() < currentBet) {
+                playerBet(player.getId(), currentBet);
+            }
+        }
     }
 
     private void resetPlayerActions() {
@@ -375,6 +382,7 @@ public class PokerGameService {
             proceedToNextRound();
             return true;
         } else {
+            System.out.println("Invalid raise: playerId=" + playerId + ", amount=" + amount + ", currentBet=" + currentBet + ", playerChips=" + (player != null ? player.getChips() : "null"));
             return false;
         }
     }

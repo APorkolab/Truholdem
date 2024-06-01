@@ -61,7 +61,6 @@ public class PokerGameController {
         }
     }
 
-
     @PostMapping("/bet")
     public ResponseEntity<Map<String, String>> playerBet(@RequestBody Map<String, Object> payload) {
         System.out.println("Received bet request: " + payload); // Log the received payload
@@ -115,7 +114,6 @@ public class PokerGameController {
     public ResponseEntity<GameStatus> getGameStatus() {
         GameStatus status = pokerGameService.getGameStatus();
         return status != null ? ResponseEntity.ok(status) : ResponseEntity.notFound().build();
-
     }
 
     @GetMapping("/end")
@@ -140,5 +138,4 @@ public class PokerGameController {
         pokerGameService.resetGame(false);
         return ResponseEntity.ok().build();
     }
-
 }

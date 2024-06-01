@@ -138,21 +138,22 @@ export class GameTableComponent implements OnInit {
   }
 
   dealRiver() {
-    this.http.get<Game>('http://localhost:8080/api/poker/river').subscribe(
-      (data: Game) => {
+    this.http.get<Game>('http://localhost:8080/api/poker/river').subscribe({
+      next: (data: Game) => {
         this.updateGameStatus(data);
         this.calculateCurrentPot();
       },
-      (error: HttpErrorResponse) => {
-        console.error('Error during dealing the river:', error);
+      error: (error: HttpErrorResponse) => {
+        console.error('Error during dealing the river:', error.message);
         if (error.status === 400) {
-          alert('Invalid request to deal the river. Please check the game state and try again.');
+          alert('Cannot deal river at this phase or some players have not acted.');
         } else {
           alert('An unexpected error occurred. Please try again later.');
         }
       }
-    );
+    });
   }
+
 
   endGame(): void {
     this.http.get('http://localhost:8080/api/poker/end', { responseType: 'text' }).subscribe(
