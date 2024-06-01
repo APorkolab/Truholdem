@@ -3,6 +3,7 @@ package com.truholdem.controller;
 import com.truholdem.model.GameStatus;
 import com.truholdem.model.PlayerInfo;
 import com.truholdem.service.PokerGameService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -45,15 +46,40 @@ public class PokerGameController {
     }
 
     @GetMapping("/river")
-    public ResponseEntity<GameStatus> dealRiver() {
-        Optional<GameStatus> gameStatus = pokerGameService.dealRiver();
-        return gameStatus.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.badRequest().build());
+    public ResponseEntity<?> dealRiver() {
+        try {
+            Optional<GameStatus> gameStatus = pokerGameService.dealRiver();
+            if (gameStatus.isPresent()) {
+                return ResponseEntity.ok(gameStatus.get());
+            } else {
+                return ResponseEntity.badRequest().body("Cannot deal river at this phase.");
+            }
+        } catch (Exception e) {
+            // Log the exception
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error during dealing the river.");
+        }
     }
+
 
     @PostMapping("/bet")
     public ResponseEntity<Map<String, String>> playerBet(@RequestBody Map<String, Object> payload) {
+        System.out.println("Received bet request: " + payload); // Log the received payload
         String playerId = (String) payload.get("playerId");
-        int amount = (int) payload.get("amount");
+        int amount;
+        try {
+            amount = (int) payload.get("amount");
+        } catch (ClassCastException | NullPointerException e) {
+            Map<String, String> response = new HashMap<>();
+            response.put("error", "Invalid amount format.");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        if (amount <= 0) {
+            Map<String, String> response = new HashMap<>();
+            response.put("error", "Amount must be greater than zero.");
+            return ResponseEntity.badRequest().body(response);
+        }
 
         boolean betPlaced = pokerGameService.playerBet(playerId, amount);
         Map<String, String> response = new HashMap<>();
@@ -61,7 +87,7 @@ public class PokerGameController {
             response.put("message", "Bet placed successfully.");
             return ResponseEntity.ok(response);
         } else {
-            response.put("error", "Bet placement failed.");
+            response.put("error", "Bet placement failed. Please check the game state and try again.");
             return ResponseEntity.badRequest().body(response);
         }
     }

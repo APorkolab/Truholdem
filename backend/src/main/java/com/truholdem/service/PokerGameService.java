@@ -7,8 +7,8 @@ import java.util.*;
 
 @Service
 public class PokerGameService {
-    private int smallBlindAmount = 50;
-    private int bigBlindAmount = 100;
+    private int smallBlindAmount = 5; // Kisvak érték módosítása
+    private int bigBlindAmount = 15; // Nagyvak érték módosítása
     private Player smallBlindPlayer;
     private Player bigBlindPlayer;
     private GameStatus gameStatus;
@@ -94,7 +94,6 @@ public class PokerGameService {
             player.setChips(player.getChips() - amount);
             player.setBetAmount(amount);
             pot += amount;
-            playerActions.put(player.getId(), true);
         }
     }
 
@@ -128,7 +127,12 @@ public class PokerGameService {
     }
 
     private boolean allPlayersActed() {
-        return playerActions.values().stream().allMatch(actionTaken -> actionTaken);
+        return playerActions.entrySet().stream()
+                .filter(entry -> {
+                    Player player = findPlayerById(entry.getKey());
+                    return player != null && !player.isFolded();
+                })
+                .allMatch(Map.Entry::getValue);
     }
 
     public Optional<GameStatus> dealFlop() {
@@ -152,13 +156,19 @@ public class PokerGameService {
     }
 
     public Optional<GameStatus> dealRiver() {
-        if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.TURN && allPlayersActed()) {
+        if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.TURN && allPlayersActed() && areAllBetsEqual()) {
             performRiver();
             gameStatus.setPhase(GameStatus.GamePhase.RIVER);
             resetPlayerActions();
             return Optional.of(gameStatus);
         }
         return Optional.empty();
+    }
+
+    private void performRiver() {
+        deck.drawCard(); // Burn
+        Card riverCard = deck.drawCard();
+        gameStatus.addCardToCommunity(riverCard);
     }
 
     public boolean playerFold(String playerId) {
@@ -190,25 +200,25 @@ public class PokerGameService {
         gameStatus.addCardToCommunity(turnCard);
     }
 
-    private void performRiver() {
-        deck.drawCard(); // Burn
-        Card riverCard = deck.drawCard();
-        gameStatus.addCardToCommunity(riverCard);
-    }
-
     public boolean playerBet(String playerId, int amount) {
         Player player = findPlayerById(playerId);
-        if (gameStarted && player != null && amount >= currentBet && player.getChips() >= amount) {
-            player.setChips(player.getChips() - amount);
-            player.setBetAmount(player.getBetAmount() + amount);
-            pot += amount;
-            currentBet = amount; // Update the current bet to the new bet
-            playerActions.put(playerId, true);
-            proceedToNextRound();
-            return true;
-        } else {
-            return false;
+        if (player != null) {
+            int betIncrement = amount - player.getBetAmount();
+            if (betIncrement <= 0 || amount < currentBet) {
+                System.out.println("Invalid bet: betIncrement=" + betIncrement + ", amount=" + amount + ", currentBet=" + currentBet);
+                return false; // Bet must increase and must be at least the current bet
+            }
+            if (player.getChips() >= betIncrement) {
+                player.setChips(player.getChips() - betIncrement);
+                player.setBetAmount(amount);
+                pot += betIncrement;
+                currentBet = amount; // Update the current bet to the new bet
+                playerActions.put(playerId, true);
+                proceedToNextRound();
+                return true;
+            }
         }
+        return false;
     }
 
     public void checkForEarlyWin() {
@@ -336,7 +346,7 @@ public class PokerGameService {
                 }
                 break;
             case 2:
-                int raiseAmount = currentBet + rand.nextInt(100);
+                int raiseAmount = currentBet + rand.nextInt(50);
                 if (bot.getChips() >= raiseAmount) {
                     playerRaise(bot.getId(), raiseAmount);
                 } else if (bot.getChips() >= currentBet) {
@@ -355,7 +365,7 @@ public class PokerGameService {
 
     public synchronized boolean playerRaise(String playerId, int amount) {
         Player player = findPlayerById(playerId);
-        if (gameStarted && player != null && amount > currentBet && player.getChips() >= amount) {
+        if (gameStarted && player != null && amount > currentBet && player.getChips() >= (amount - player.getBetAmount())) {
             int raiseAmount = amount - player.getBetAmount();
             player.setChips(player.getChips() - raiseAmount);
             player.setBetAmount(amount);

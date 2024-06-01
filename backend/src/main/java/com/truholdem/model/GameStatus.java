@@ -8,6 +8,8 @@ public class GameStatus {
     private List<Player> players = new ArrayList<>();
     private GamePhase phase = GamePhase.PRE_FLOP; // Kezdő állapot
     private int currentPot = 0;
+    private String message;
+
 
     private int currentBet;
 
@@ -24,7 +26,13 @@ public class GameStatus {
         PRE_FLOP, FLOP, TURN, RIVER, SHOWDOWN;
     }
 
+    public String getMessage() {
+        return message;
+    }
 
+    public void setMessage(String message) {
+        this.message = message;
+    }
 
     // Játékos hozzáadása
     public void addPlayer(Player player) {

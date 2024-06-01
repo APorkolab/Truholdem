@@ -21,6 +21,8 @@ export class RaiseInputComponent implements OnInit {
   isRaiseInputVisible = false;
   raiseAmount = 0;
   maxRaiseAmount = 0;
+  minRaiseAmount = 0; // Új mező a minimális tétnek
+  suggestedRaiseAmount = 0; // Új mező az ajánlott tétnek
   currentPlayer: Player | undefined;
   currentBet: number = 0;
 
@@ -34,9 +36,28 @@ export class RaiseInputComponent implements OnInit {
   }
 
   async setMaxRaiseAmount(): Promise<void> {
-    this.maxRaiseAmount = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'))?.chips || 10;
-    this.currentBet = this.game?.players.reduce((max, player) => player.betAmount > max ? player.betAmount : max, 0) || 0;
-    console.log(this.game?.players);
+    this.currentPlayer = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'));
+    if (this.currentPlayer) {
+      this.maxRaiseAmount = this.currentPlayer.chips || 10;
+      this.currentBet = this.game?.players.reduce((max, player) => player.betAmount > max ? player.betAmount : max, 0) || 0;
+      this.minRaiseAmount = Math.ceil(this.currentBet * 1.5); // Minimális tét 1.5x az aktuális tét
+
+      // Az ajánlott tét a minimum tét + 5-10%
+      const suggestedRaisePercentage = 1 + (Math.random() * 0.05 + 0.05); // 5-10% között
+      this.suggestedRaiseAmount = Math.ceil(this.minRaiseAmount * suggestedRaisePercentage);
+
+      // Ügyeljünk arra, hogy az ajánlott tét érvényes legyen
+      if (this.suggestedRaiseAmount > this.maxRaiseAmount) {
+        this.suggestedRaiseAmount = this.maxRaiseAmount;
+      }
+
+      // Az ajánlott tét nem lehet kisebb a minimális tét összegénél
+      if (this.suggestedRaiseAmount < this.minRaiseAmount) {
+        this.suggestedRaiseAmount = this.minRaiseAmount;
+      }
+
+      console.log(this.game?.players);
+    }
   }
 
   showRaiseInput(): void {
@@ -49,47 +70,41 @@ export class RaiseInputComponent implements OnInit {
 
   async raise(raiseAmount: number): Promise<void> {
     this.isRaiseInputVisible = false;
-    const currentPlayerId = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'))?.id;
-    const currentPlayer = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'));
-    if (currentPlayerId && raiseAmount > 0) {
-      if (raiseAmount <= currentPlayer!.chips) {
-        const headers = new HttpHeaders({
-          'Content-Type': 'application/json',
-        });
+    if (this.currentPlayer && raiseAmount > 0 && raiseAmount <= this.currentPlayer.chips && raiseAmount >= this.minRaiseAmount) {
+      const headers = new HttpHeaders({
+        'Content-Type': 'application/json',
+      });
 
-        const body = {
-          playerId: currentPlayerId,
-          amount: raiseAmount
-        };
+      const body = {
+        playerId: this.currentPlayer.id,
+        amount: raiseAmount
+      };
 
-        try {
-          const response = await this.http.post('http://localhost:8080/api/poker/bet', body, { headers }).toPromise();
-          this.getGameStatus();
-          this.actionTaken.emit(); // Esemény kibocsátása
-        } catch (error) {
-          console.error('Error during raise:', error);
-          this.getGameStatus();
-        }
-      } else {
-        alert('The raise amount cannot exceed your chip count.');
+      try {
+        const response = await this.http.post('http://localhost:8080/api/poker/bet', body, { headers }).toPromise();
+        this.getGameStatus();
+        this.actionTaken.emit(); // Esemény kibocsátása
+      } catch (error) {
+        console.error('Error during raise:', error);
+        this.getGameStatus();
       }
+    } else {
+      alert(`The raise amount must be greater than ${this.minRaiseAmount}, and cannot exceed your chip count or be zero.`);
     }
   }
 
   async allIn(): Promise<void> {
-    const currentPlayer = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'));
-    if (currentPlayer) {
-      await this.raise(currentPlayer.chips);
+    if (this.currentPlayer) {
+      await this.raise(this.currentPlayer.chips);
       this.actionTaken.emit(); // Esemény kibocsátása
     }
     await this.getGameStatus();
   }
 
   async check(): Promise<void> {
-    const currentPlayer = this.game?.players.find((player: Player) => !player.name?.startsWith('Bot'));
-    if (currentPlayer) {
+    if (this.currentPlayer) {
       // Check if the current player's bet equals the highest bet or if the player is all-in
-      if (currentPlayer.betAmount === this.currentBet || currentPlayer.chips === 0) {
+      if (this.currentPlayer.betAmount === this.currentBet || this.currentPlayer.chips === 0) {
         this.isRaiseInputVisible = false;
         this.actionTaken.emit(); // Esemény kibocsátása a check gombbal
       } else {

@@ -14,7 +14,13 @@
 	<div class="raise-input-box">
 		<button class="close-btn" (click)="cancelRaise()">×</button>
 		<div class="info">
-			Maximum raise: {{maxRaiseAmount}}
+			Minimum raise: {{ minRaiseAmount }}
+		</div>
+		<div class="info">
+			Maximum raise: {{ maxRaiseAmount }}
+		</div>
+		<div class="info">
+			Suggested raise: {{ suggestedRaiseAmount }}
 		</div>
 		<input type="number" [(ngModel)]="raiseAmount" placeholder="Enter raise amount" [max]="maxRaiseAmount" />
 		<div class="actions">

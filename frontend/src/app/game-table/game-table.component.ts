@@ -97,46 +97,61 @@ export class GameTableComponent implements OnInit {
     });
   }
 
-  dealFlop(): void {
-    if (this.playerActionTaken) {
-      this.http.get('http://localhost:8080/api/poker/flop').subscribe({
-        next: () => {
-          this.getGameStatus();
-          this.updateCurrentPot(); // Update pot on deal flop
-        },
-        error: (error) => console.error('Error during dealing the flop:', error)
-      });
-    } else {
-      alert('You must take an action before proceeding to the next phase.');
-    }
+  dealFlop() {
+    this.http.get('http://localhost:8080/api/poker/flop').subscribe(
+      (data: any) => {
+        this.updateGameStatus(data);
+        this.calculateCurrentPot();
+      },
+      (error: HttpErrorResponse) => {
+        console.error('Error during dealing the flop:', error);
+        if (error.status === 400) {
+          alert('Invalid request to deal the turn. Please check the game state and try again.');
+        } else {
+          alert('An unexpected error occurred. Please try again later.');
+        }
+      }
+    );
   }
 
-  dealTurn(): void {
-    if (this.playerActionTaken) {
-      this.http.get('http://localhost:8080/api/poker/turn').subscribe({
-        next: () => {
-          this.getGameStatus();
-          this.updateCurrentPot(); // Update pot on deal turn
-        },
-        error: (error) => console.error('Error during dealing the turn:', error)
-      });
-    } else {
-      alert('You must take an action before proceeding to the next phase.');
-    }
+  // Ez a metódus frissíti a játék állapotát
+  updateGameStatus(data: any): void {
+    this.game = data;
+    // Esetleg más állapotfrissítések
   }
 
-  dealRiver(): void {
-    if (this.playerActionTaken) {
-      this.http.get('http://localhost:8080/api/poker/river').subscribe({
-        next: () => {
-          this.getGameStatus();
-          this.updateCurrentPot(); // Update pot on deal river
-        },
-        error: (error) => console.error('Error during dealing the river:', error)
-      });
-    } else {
-      alert('You must take an action before proceeding to the next phase.');
-    }
+  dealTurn() {
+    this.http.get('http://localhost:8080/api/poker/turn').subscribe(
+      (data: any) => {
+        this.updateGameStatus(data);
+        this.calculateCurrentPot();
+      },
+      (error: HttpErrorResponse) => {
+        console.error('Error during dealing the turn:', error);
+        if (error.status === 400) {
+          alert('Invalid request to deal the turn. Please check the game state and try again.');
+        } else {
+          alert('An unexpected error occurred. Please try again later.');
+        }
+      }
+    );
+  }
+
+  dealRiver() {
+    this.http.get<Game>('http://localhost:8080/api/poker/river').subscribe(
+      (data: Game) => {
+        this.updateGameStatus(data);
+        this.calculateCurrentPot();
+      },
+      (error: HttpErrorResponse) => {
+        console.error('Error during dealing the river:', error);
+        if (error.status === 400) {
+          alert('Invalid request to deal the river. Please check the game state and try again.');
+        } else {
+          alert('An unexpected error occurred. Please try again later.');
+        }
+      }
+    );
   }
 
   endGame(): void {
