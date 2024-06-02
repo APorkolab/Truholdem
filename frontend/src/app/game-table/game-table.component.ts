@@ -106,7 +106,7 @@ export class GameTableComponent implements OnInit {
       (error: HttpErrorResponse) => {
         console.error('Error during dealing the flop:', error);
         if (error.status === 400) {
-          alert('Invalid request to deal the turn. Please check the game state and try again.');
+          alert('Invalid request to deal the flop. Please check the game state and try again.');
         } else {
           alert('An unexpected error occurred. Please try again later.');
         }
@@ -154,7 +154,6 @@ export class GameTableComponent implements OnInit {
     });
   }
 
-
   endGame(): void {
     this.http.get('http://localhost:8080/api/poker/end', { responseType: 'text' }).subscribe(
       (response) => {
@@ -179,13 +178,30 @@ export class GameTableComponent implements OnInit {
         next: (response) => {
           console.log("Fold successful", response);
           this.playerActionTaken = true;
-          this.getGameStatus();
-          this.updateCurrentPot(); // Update pot on fold
+          this.getGameStatus(); // Update game status after fold
+          this.progressToNextPhase(); // Manually progress to next phase
         },
         error: (error) => console.error('Error during fold:', error)
       });
     } else {
       console.error('No non-bot player found');
+    }
+  }
+
+  private progressToNextPhase(): void {
+    switch (this.game.phase) {
+      case 'PRE_FLOP':
+        this.dealFlop();
+        break;
+      case 'FLOP':
+        this.dealTurn();
+        break;
+      case 'TURN':
+        this.dealRiver();
+        break;
+      case 'RIVER':
+        this.endGame();
+        break;
     }
   }
 
@@ -266,7 +282,8 @@ export class GameTableComponent implements OnInit {
       next: () => {
         this.getGameStatus();
         this.closeModal();
-        this.updateCurrentPot(); // Update pot on reset game
+        this.updateCurrentPot();
+        this.nonBotPlayer!.folded = false;
       },
       error: (error) => console.error('Error during game reset:', error)
     });

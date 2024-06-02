@@ -127,12 +127,9 @@ public class PokerGameService {
     }
 
     private boolean allPlayersActed() {
-        return playerActions.entrySet().stream()
-                .filter(entry -> {
-                    Player player = findPlayerById(entry.getKey());
-                    return player != null && !player.isFolded();
-                })
-                .allMatch(Map.Entry::getValue);
+        return gameStatus.getPlayers().stream()
+                .filter(player -> !player.isFolded()) // Csak a még aktív játékosokat vizsgáljuk
+                .allMatch(player -> playerActions.get(player.getId()));
     }
 
     public Optional<GameStatus> dealFlop() {
@@ -156,22 +153,11 @@ public class PokerGameService {
     }
 
     public Optional<GameStatus> dealRiver() {
-        if (gameStarted) {
-            if (gameStatus.getPhase() != GameStatus.GamePhase.TURN) {
-                System.out.println("Error: Game is not in TURN phase");
-            }
-            if (!allPlayersActed()) {
-                System.out.println("Error: Not all players have acted");
-            }
-            if (!areAllBetsEqual()) {
-                System.out.println("Error: Not all bets are equal");
-            }
-            if (gameStatus.getPhase() == GameStatus.GamePhase.TURN && allPlayersActed() && areAllBetsEqual()) {
-                performRiver();
-                gameStatus.setPhase(GameStatus.GamePhase.RIVER);
-                resetPlayerActions();
-                return Optional.of(gameStatus);
-            }
+        if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.TURN && allPlayersActed()) {
+            performRiver();
+            gameStatus.setPhase(GameStatus.GamePhase.RIVER);
+            resetPlayerActions();
+            return Optional.of(gameStatus);
         }
         return Optional.empty();
     }
@@ -187,12 +173,16 @@ public class PokerGameService {
 
         if (player != null && !player.isFolded()) {
             player.setFolded(true);
-            checkForEarlyWin();
             playerActions.put(playerId, true);
-            proceedToNextRound();
+
+            // Check if only one player remains active
+            if (gameStatus.getPlayers().stream().filter(p -> !p.isFolded()).count() == 1) {
+                endGameEarly();
+            } else {
+                proceedToNextRound();
+            }
             return true;
         }
-
         return false;
     }
 
@@ -246,7 +236,7 @@ public class PokerGameService {
                 .orElse(null);
         if (winner != null) {
             winner.addWinnings(pot);
-            resetGame(false);
+            resetGame(true);
         }
     }
 
@@ -350,12 +340,14 @@ public class PokerGameService {
     }
 
     private void automateBotAction(Player bot) {
-        if (bot.getChips() >= currentBet) {
-            playerBet(bot.getId(), currentBet);
-        } else {
-            playerFold(bot.getId());
+        if (!bot.isFolded()) {
+            if (bot.getChips() >= currentBet) {
+                playerBet(bot.getId(), currentBet);
+            } else {
+                playerFold(bot.getId());
+            }
+            playerActions.put(bot.getId(), true); // Update playerActions after bot action
         }
-        playerActions.put(bot.getId(), true); // Update playerActions after bot action
     }
 
     private void ensureBotsMatchBets() {

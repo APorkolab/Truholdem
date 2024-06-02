@@ -15,7 +15,7 @@
 		<div class="player-info">
 			<span>{{ player.name || 'Anonymous' }}</span>
 			<span> Chips: {{ player.chips }}</span>
-			<span *ngIf="player.folded"> Folded</span>
+			<span *ngIf="isFolded()"> Folded</span>
 		</div>
 	</div>
 
@@ -27,12 +27,14 @@
 
 	<div class="actions">
 		<button *ngIf="game?.phase !== 'RIVER'" (click)="fold()">Fold</button>
-		<app-raise-input [game]="game" (actionTaken)="handleRaiseAction()"></app-raise-input>
+		<app-raise-input *ngIf="!isFolded()" [game]="game" (actionTaken)="handleRaiseAction()"></app-raise-input>
 		<div>Pots: {{ currentPot || 0 }}</div>
 		<button *ngIf="game?.phase === 'PRE_FLOP'" (click)="dealFlop()">Deal Flop</button>
 		<button *ngIf="game?.phase === 'FLOP'" (click)="dealTurn()">Deal Turn</button>
 		<button *ngIf="game?.phase === 'TURN'" (click)="dealRiver()">Deal River</button>
 		<button *ngIf="game?.phase === 'RIVER'" (click)="endGame(); openModal()">End Game</button>
+		<button (click)="startNewGame()">New Game</button>
+		<button (click)="resetGame()">Reset Game</button>
 	</div>
 
 	<div class="modal" *ngIf="showModal">

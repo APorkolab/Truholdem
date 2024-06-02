@@ -113,6 +113,23 @@ export class RaiseInputComponent implements OnInit {
     }
   }
 
+  async fold(): Promise<void> {
+    if (this.currentPlayer) {
+      const params = new HttpParams().set('playerId', this.currentPlayer.id);
+
+      this.http.post('http://localhost:8080/api/poker/fold', null, { params: params, responseType: 'text' }).subscribe({
+        next: (response) => {
+          console.log("Fold successful", response);
+          this.actionTaken.emit(); // Esemény kibocsátása
+          this.getGameStatus();
+        },
+        error: (error) => console.error('Error during fold:', error)
+      });
+    } else {
+      console.error('No current player found');
+    }
+  }
+
   getGameStatus(): void {
     this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
       next: (data) => {
@@ -147,13 +164,13 @@ export class RaiseInputComponent implements OnInit {
     });
 
     // Start new game with current players and their remaining chips
-    this.http.post('http://localhost:8080/api/poker/new-game', this.players).subscribe({
+    this.http.post('http://localhost:8080/api/poker/start', this.players).subscribe({
       next: (response) => {
         console.log(response);
-        window.location.href = '/start';
+        this.getGameStatus(); // Update the game status
       },
       error: (error) => {
-        console.error(error);
+        console.error('Error starting new game:', error);
         alert('An error occurred while starting a new game. Please try again later.');
       }
     });
@@ -165,13 +182,13 @@ export class RaiseInputComponent implements OnInit {
         player.startingChips = 1000; // Reset all players' chips to default
       });
 
-      this.http.post('http://localhost:8080/api/poker/reset', this.players).subscribe({
+      this.http.post('http://localhost:8080/api/poker/reset', {}).subscribe({
         next: (response) => {
           console.log(response);
-          window.location.href = '/start';
+          this.getGameStatus(); // Update the game status
         },
         error: (error) => {
-          console.error(error);
+          console.error('Error resetting game:', error);
           alert('An error occurred while resetting the game. Please try again later.');
         }
       });
