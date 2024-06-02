@@ -134,8 +134,13 @@ public class PokerGameController {
     }
 
     @PostMapping("/reset")
-    public ResponseEntity<Void> resetGame() {
-        pokerGameService.resetGame(false);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<String> resetGame(@RequestBody Map<String, Boolean> request) {
+        boolean keepPlayers = request.getOrDefault("keepPlayers", false);
+        boolean resetResult = pokerGameService.resetGame(keepPlayers);
+        if (resetResult) {
+            return ResponseEntity.ok("Game has been reset successfully.");
+        } else {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to reset the game.");
+        }
     }
 }

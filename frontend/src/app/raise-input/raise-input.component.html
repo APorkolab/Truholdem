@@ -3,11 +3,11 @@
 		(click)="showRaiseInput()">Raise</button>
 	<button *ngIf="game?.phase !== 'RIVER' &&!isFolded()" type="button" class="btn btn-info"
 		(click)="check()">Check</button>
-	<button *ngIf="game?.phase !== 'RIVER' && !isFolded()" type="button" class="btn btn-warning all-in-btn"
-		(click)="allIn()">All-in</button>
+	<!-- <button *ngIf="game?.phase !== 'RIVER' && !isFolded()" type="button" class="btn btn-warning all-in-btn"
+		(click)="allIn()">All-in</button> -->
 	<div>
-		<button type="button" class="btn btn-info new-game-btn" (click)="startNewGame()">New Game</button>
-		<button type="button" class="btn btn-danger reset-game-btn" (click)="resetGame()">Reset Game</button>
+		<!-- <button type="button" class="btn btn-info new-game-btn" (click)="startNewGame()">New Game</button> -->
+		<!-- <button type="button" class="btn btn-danger reset-game-btn" (click)="resetGame()">Reset Game</button> -->
 	</div>
 </div>
 
@@ -27,7 +27,7 @@
 		<input type="number" [(ngModel)]="raiseAmount" placeholder="Enter raise amount" [max]="maxRaiseAmount" />
 		<div class="actions">
 			<button type="button" class="btn btn-success" (click)="raise(raiseAmount)">OK</button>
-			<button type="button" class="btn btn-warning" (click)="allIn()">All-in</button>
+			<!-- <button type="button" class="btn btn-warning" (click)="allIn()">All-in</button> -->
 			<button type="button" class="btn btn-danger" (click)="cancelRaise()">Cancel</button>
 		</div>
 	</div>

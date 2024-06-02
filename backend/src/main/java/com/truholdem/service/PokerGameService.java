@@ -36,10 +36,6 @@ public class PokerGameService {
         pot = 0;
 
         if (!keepPlayers) {
-            for (Player player : gameStatus.getPlayers()) {
-                player.setFolded(false);
-                player.setChips(player.getStartingChips());
-            }
             gameStatus.getPlayers().clear();
         } else {
             for (Player player : gameStatus.getPlayers()) {
@@ -56,11 +52,13 @@ public class PokerGameService {
     }
 
     public GameStatus startGame(List<PlayerInfo> playersInfo) {
-        resetGame(false);
+        resetGame(true);  // Keep the players
 
         if (playersInfo != null && playersInfo.size() >= 2) {
             for (PlayerInfo playerInfo : playersInfo) {
-                registerPlayer(playerInfo.getName(), playerInfo.getStartingChips(), playerInfo.isBot());
+                if (gameStatus.getPlayers().stream().noneMatch(p -> p.getName().equals(playerInfo.getName()))) {
+                    registerPlayer(playerInfo.getName(), playerInfo.getStartingChips(), playerInfo.isBot());
+                }
             }
 
             setBlinds();
@@ -70,8 +68,8 @@ public class PokerGameService {
             return gameStatus;
         } else {
             System.out.println("Not enough players to start the game. Minimum 2 players required.");
+            return null;
         }
-        return null;
     }
 
     private void setBlinds() {

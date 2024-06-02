@@ -134,6 +134,7 @@ export class RaiseInputComponent implements OnInit {
     this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
       next: (data) => {
         this.game = data;
+        this.initializePlayers();
         this.setMaxRaiseAmountAfterGameStatusUpdate();
       },
       error: (error: HttpErrorResponse) => {
@@ -180,16 +181,18 @@ export class RaiseInputComponent implements OnInit {
         player.startingChips = 1000;
       });
 
-      this.http.post('http://localhost:8080/api/poker/reset', {}).subscribe({
+      this.http.post('http://localhost:8080/api/poker/reset', { keepPlayers: true }).subscribe({
         next: (response) => {
           console.log(response);
           this.getGameStatus();
         },
-        error: (error) => {
-          console.error('Error resetting game:', error);
+        error: (error: HttpErrorResponse) => {
+          console.error('Error resetting game:', error.message);
           alert('An error occurred while resetting the game. Please try again later.');
         }
       });
     }
   }
+
+
 }

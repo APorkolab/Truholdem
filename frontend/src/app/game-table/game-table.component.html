@@ -33,8 +33,6 @@
 		<button *ngIf="game?.phase === 'FLOP' && isFolded()" (click)="dealTurn()">Deal Turn</button>
 		<button *ngIf="game?.phase === 'TURN' && isFolded()" (click)="dealRiver()">Deal River</button>
 		<button *ngIf="game?.phase === 'RIVER'" (click)="endGame(); openModal()">End Game</button>
-		<!-- <button (click)="startNewGame()">New Game</button>
-		<button (click)="resetGame()">Reset Game</button> -->
 	</div>
 
 	<div class="modal" *ngIf="showModal">
@@ -48,7 +46,7 @@
 					<p>{{ gameResultMessage }}</p>
 				</div>
 				<div class="modal-footer">
-					<button type="button" class="btn btn-secondary" (click)="resetGame()">Reset Game</button>
+					<!-- <button type="button" class="btn btn-secondary" (click)="resetGame()">Reset Game</button> -->
 					<button type="button" class="btn btn-primary" (click)="startNewMatch()">Start New Match</button>
 					<button type="button" class="btn btn-secondary" (click)="closeModal()">Close</button>
 				</div>
