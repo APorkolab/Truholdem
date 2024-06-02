@@ -4,11 +4,12 @@ import com.truholdem.model.*;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class PokerGameService {
-    private int smallBlindAmount = 5; // Kisvak érték módosítása
-    private int bigBlindAmount = 15; // Nagyvak érték módosítása
+    private int smallBlindAmount = 5;
+    private int bigBlindAmount = 15;
     private Player smallBlindPlayer;
     private Player bigBlindPlayer;
     private GameStatus gameStatus;
@@ -16,7 +17,7 @@ public class PokerGameService {
     private boolean gameStarted;
     private int currentBet;
     private int pot;
-    private int dealerPosition; // Dealer pozíció nyomon követésére
+    private int dealerPosition;
     private Map<String, Boolean> playerActions;
 
     public PokerGameService() {
@@ -37,43 +38,48 @@ public class PokerGameService {
         if (!keepPlayers) {
             for (Player player : gameStatus.getPlayers()) {
                 player.setFolded(false);
-                player.setChips(player.getStartingChips()); // Kezdeti vagyon beállítása újraindításkor
+                player.setChips(player.getStartingChips());
             }
             gameStatus.getPlayers().clear();
         } else {
             for (Player player : gameStatus.getPlayers()) {
                 player.clearHand();
                 player.setFolded(false);
-                player.setBetAmount(0); // Bet amount reset
-                player.setChips(player.getStartingChips()); // Kezdeti vagyon beállítása újraindításkor
+                player.setBetAmount(0);
+                player.setChips(player.getStartingChips());
                 playerActions.put(player.getId(), false);
             }
         }
 
-        dealerPosition = 0; // Újraindításkor a dealer pozíció nullázása
+        dealerPosition = 0;
         return true;
     }
 
     public GameStatus startGame(List<PlayerInfo> playersInfo) {
-        resetGame(false); // Reset the game without keeping the players
+        resetGame(false);
 
-        if (playersInfo != null && !playersInfo.isEmpty()) {
+        if (playersInfo != null && playersInfo.size() >= 2) {
             for (PlayerInfo playerInfo : playersInfo) {
                 registerPlayer(playerInfo.getName(), playerInfo.getStartingChips(), playerInfo.isBot());
             }
-        }
 
-        setBlinds();
-        dealInitialCards();
-        gameStatus.setPhase(GameStatus.GamePhase.PRE_FLOP);
-        gameStarted = true;
-        return gameStatus;
+            setBlinds();
+            dealInitialCards();
+            gameStatus.setPhase(GameStatus.GamePhase.PRE_FLOP);
+            gameStarted = true;
+            return gameStatus;
+        } else {
+            System.out.println("Not enough players to start the game. Minimum 2 players required.");
+        }
+        return null;
     }
 
     private void setBlinds() {
-        List<Player> activePlayers = gameStatus.getPlayers();
+        List<Player> activePlayers = gameStatus.getPlayers().stream()
+                .filter(player -> player.getChips() > 0 && !player.isFolded())
+                .collect(Collectors.toList());
+
         if (activePlayers.size() >= 2) {
-            // Frissítjük a dealer pozíciót
             dealerPosition = (dealerPosition + 1) % activePlayers.size();
             int smallBlindPosition = (dealerPosition + 1) % activePlayers.size();
             int bigBlindPosition = (dealerPosition + 2) % activePlayers.size();
@@ -81,11 +87,12 @@ public class PokerGameService {
             smallBlindPlayer = activePlayers.get(smallBlindPosition);
             bigBlindPlayer = activePlayers.get(bigBlindPosition);
 
-            // Kisvak és nagyvak tétek elhelyezése
             placeBlindBet(smallBlindPlayer, smallBlindAmount);
             placeBlindBet(bigBlindPlayer, bigBlindAmount);
 
             currentBet = bigBlindAmount;
+        } else {
+            throw new IllegalStateException("Not enough players for setting blinds.");
         }
     }
 
@@ -102,6 +109,9 @@ public class PokerGameService {
             player.clearHand();
             for (int i = 0; i < 2; i++) {
                 player.addCardToHand(deck.drawCard());
+            }
+            if (player.getHand().size() != 2) {
+                throw new IllegalStateException("Player did not receive two cards.");
             }
             playerActions.put(player.getId(), false);
         });
@@ -128,7 +138,7 @@ public class PokerGameService {
 
     private boolean allPlayersActed() {
         return gameStatus.getPlayers().stream()
-                .filter(player -> !player.isFolded()) // Csak a még aktív játékosokat vizsgáljuk
+                .filter(player -> !player.isFolded())
                 .allMatch(player -> playerActions.get(player.getId()));
     }
 
@@ -162,29 +172,13 @@ public class PokerGameService {
         return Optional.empty();
     }
 
-    private void performRiver() {
-        deck.drawCard(); // Burn
-        Card riverCard = deck.drawCard();
-        gameStatus.addCardToCommunity(riverCard);
-    }
-
     public boolean playerFold(String playerId) {
         Player player = findPlayerById(playerId);
-
-        if (player != null && !player.isFolded()) {
             player.setFolded(true);
             playerActions.put(playerId, true);
-
-            // Check if only one player remains active
-            if (gameStatus.getPlayers().stream().filter(p -> !p.isFolded()).count() == 1) {
-                endGameEarly();
-            } else {
-                proceedToNextRound();
-            }
+            checkForEarlyWin();
             return true;
         }
-        return false;
-    }
 
     private void performFlop() {
         deck.drawCard(); // Burn
@@ -201,21 +195,29 @@ public class PokerGameService {
         gameStatus.addCardToCommunity(turnCard);
     }
 
+    private void performRiver() {
+        deck.drawCard(); // Burn
+        Card riverCard = deck.drawCard();
+        gameStatus.addCardToCommunity(riverCard);
+    }
+
     public boolean playerBet(String playerId, int amount) {
         Player player = findPlayerById(playerId);
         if (player != null) {
             int betIncrement = amount - player.getBetAmount();
             if (betIncrement <= 0 || amount < currentBet) {
                 System.out.println("Invalid bet: betIncrement=" + betIncrement + ", amount=" + amount + ", currentBet=" + currentBet);
-                return false; // Bet must increase and must be at least the current bet
+                return false;
             }
             if (player.getChips() >= betIncrement) {
                 player.setChips(player.getChips() - betIncrement);
                 player.setBetAmount(amount);
                 pot += betIncrement;
-                currentBet = amount; // Update the current bet to the new bet
+                currentBet = amount;
                 playerActions.put(playerId, true);
-                proceedToNextRound();
+
+                checkForEarlyWin();
+
                 return true;
             }
         }
@@ -226,6 +228,8 @@ public class PokerGameService {
         long activePlayers = gameStatus.getPlayers().stream().filter(p -> !p.isFolded()).count();
         if (activePlayers == 1) {
             endGameEarly();
+        } else {
+            proceedToNextRound();
         }
     }
 
@@ -250,7 +254,6 @@ public class PokerGameService {
         return null;
     }
 
-
     private boolean areAllBetsEqual() {
         int expectedBet = currentBet;
         boolean allEqual = true;
@@ -270,21 +273,18 @@ public class PokerGameService {
             }
         });
 
-        ensureBotsMatchBets(); // Ensure bots place the correct bets
+        ensureBotsMatchBets();
 
         if (areAllBetsEqual() && allPlayersActed()) {
             switch (gameStatus.getPhase()) {
                 case PRE_FLOP:
-                    performFlop();
-                    gameStatus.setPhase(GameStatus.GamePhase.FLOP);
+                    dealFlop();
                     break;
                 case FLOP:
-                    performTurn();
-                    gameStatus.setPhase(GameStatus.GamePhase.TURN);
+                    dealTurn();
                     break;
                 case TURN:
-                    performRiver();
-                    gameStatus.setPhase(GameStatus.GamePhase.RIVER);
+                    dealRiver();
                     break;
                 case RIVER:
                     determineWinner();
@@ -326,12 +326,12 @@ public class PokerGameService {
         players.removeIf(player -> player.getChips() <= 0);
 
         if (players.isEmpty()) {
-            return null; // No players with chips left
+            return null;
         }
 
-        resetGame(true); // Reset the game but keep the players
+        resetGame(true);
         this.deck.shuffle();
-        gameStatus.setPlayers(players); // Add remaining players
+        gameStatus.setPlayers(players);
         dealInitialCards();
         setBlinds();
         gameStatus.setPhase(GameStatus.GamePhase.PRE_FLOP);
@@ -346,8 +346,13 @@ public class PokerGameService {
             } else {
                 playerFold(bot.getId());
             }
-            playerActions.put(bot.getId(), true); // Update playerActions after bot action
+            playerActions.put(bot.getId(), true);
         }
+    }
+
+    private void updateGameStatus() {
+        gameStatus.setCurrentPot(pot);
+        gameStatus.setCurrentBet(currentBet);
     }
 
     private void ensureBotsMatchBets() {
@@ -366,12 +371,21 @@ public class PokerGameService {
         Player player = findPlayerById(playerId);
         if (gameStarted && player != null && amount > currentBet && player.getChips() >= (amount - player.getBetAmount())) {
             int raiseAmount = amount - player.getBetAmount();
+            if (raiseAmount < bigBlindAmount) {
+                System.out.println("Raise must be at least the size of the big blind.");
+                return false;
+            }
             player.setChips(player.getChips() - raiseAmount);
             player.setBetAmount(amount);
             pot += raiseAmount;
             currentBet = amount;
             playerActions.put(playerId, true);
-            proceedToNextRound();
+
+            if (player.getChips() == 0) {
+                proceedToNextRound();
+            } else {
+                proceedToNextRound();
+            }
             return true;
         } else {
             System.out.println("Invalid raise: playerId=" + playerId + ", amount=" + amount + ", currentBet=" + currentBet + ", playerChips=" + (player != null ? player.getChips() : "null"));

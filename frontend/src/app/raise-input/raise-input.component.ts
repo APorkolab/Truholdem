@@ -16,23 +16,23 @@ interface PlayerInfo {
 })
 export class RaiseInputComponent implements OnInit {
   @Input() game!: Game;
-  @Output() actionTaken = new EventEmitter<void>(); // Esemény kibocsátása akció végrehajtásakor
+  @Output() actionTaken = new EventEmitter<void>();
 
   isRaiseInputVisible = false;
   raiseAmount = 0;
   maxRaiseAmount = 0;
-  minRaiseAmount = 0; // Új mező a minimális tétnek
-  suggestedRaiseAmount = 0; // Új mező az ajánlott tétnek
+  minRaiseAmount = 0;
+  suggestedRaiseAmount = 0;
   currentPlayer: Player | undefined;
   currentBet: number = 0;
 
-  players: PlayerInfo[] = []; // Biztosítjuk, hogy a players tulajdonság definiálva van
+  players: PlayerInfo[] = [];
 
   constructor(private http: HttpClient) { }
 
   async ngOnInit(): Promise<void> {
     await this.getGameStatus();
-    this.initializePlayers(); // Initialize players from the game object
+    this.initializePlayers();
   }
 
   async setMaxRaiseAmount(): Promise<void> {
@@ -40,18 +40,15 @@ export class RaiseInputComponent implements OnInit {
     if (this.currentPlayer) {
       this.maxRaiseAmount = this.currentPlayer.chips || 10;
       this.currentBet = this.game?.players.reduce((max, player) => player.betAmount > max ? player.betAmount : max, 0) || 0;
-      this.minRaiseAmount = Math.ceil(this.currentBet * 1.5); // Minimális tét 1.5x az aktuális tét
+      this.minRaiseAmount = Math.ceil(this.currentBet * 1.5);
 
-      // Az ajánlott tét a minimum tét + 5-10%
-      const suggestedRaisePercentage = 1 + (Math.random() * 0.05 + 0.05); // 5-10% között
+      const suggestedRaisePercentage = 1 + (Math.random() * 0.05 + 0.05);
       this.suggestedRaiseAmount = Math.ceil(this.minRaiseAmount * suggestedRaisePercentage);
 
-      // Ügyeljünk arra, hogy az ajánlott tét érvényes legyen
       if (this.suggestedRaiseAmount > this.maxRaiseAmount) {
         this.suggestedRaiseAmount = this.maxRaiseAmount;
       }
 
-      // Az ajánlott tét nem lehet kisebb a minimális tét összegénél
       if (this.suggestedRaiseAmount < this.minRaiseAmount) {
         this.suggestedRaiseAmount = this.minRaiseAmount;
       }
@@ -66,6 +63,10 @@ export class RaiseInputComponent implements OnInit {
 
   cancelRaise(): void {
     this.isRaiseInputVisible = false;
+  }
+
+  isFolded(): boolean {
+    return this.currentPlayer ? this.currentPlayer.folded : false;
   }
 
   async raise(raiseAmount: number): Promise<void> {
@@ -83,7 +84,7 @@ export class RaiseInputComponent implements OnInit {
       try {
         const response = await this.http.post('http://localhost:8080/api/poker/bet', body, { headers }).toPromise();
         this.getGameStatus();
-        this.actionTaken.emit(); // Esemény kibocsátása
+        this.actionTaken.emit();
       } catch (error) {
         console.error('Error during raise:', error);
         this.getGameStatus();
@@ -96,17 +97,16 @@ export class RaiseInputComponent implements OnInit {
   async allIn(): Promise<void> {
     if (this.currentPlayer) {
       await this.raise(this.currentPlayer.chips);
-      this.actionTaken.emit(); // Esemény kibocsátása
+      this.actionTaken.emit();
     }
     await this.getGameStatus();
   }
 
   async check(): Promise<void> {
     if (this.currentPlayer) {
-      // Check if the current player's bet equals the highest bet or if the player is all-in
       if (this.currentPlayer.betAmount === this.currentBet || this.currentPlayer.chips === 0) {
         this.isRaiseInputVisible = false;
-        this.actionTaken.emit(); // Esemény kibocsátása a check gombbal
+        this.actionTaken.emit();
       } else {
         alert('You cannot check unless your current bet matches the highest bet or you are all-in.');
       }
@@ -120,7 +120,7 @@ export class RaiseInputComponent implements OnInit {
       this.http.post('http://localhost:8080/api/poker/fold', null, { params: params, responseType: 'text' }).subscribe({
         next: (response) => {
           console.log("Fold successful", response);
-          this.actionTaken.emit(); // Esemény kibocsátása
+          this.actionTaken.emit();
           this.getGameStatus();
         },
         error: (error) => console.error('Error during fold:', error)
@@ -149,25 +149,23 @@ export class RaiseInputComponent implements OnInit {
 
   initializePlayers(): void {
     this.players = this.game.players.map((player: Player) => ({
-      name: player.name || '', // Biztosítjuk, hogy a name soha ne legyen null
+      name: player.name || '',
       startingChips: player.chips,
       isBot: player.name.startsWith('Bot')
     }));
   }
 
   startNewGame(): void {
-    // Ensure all players with 0 chips are removed or reset their chips
     this.players.forEach((player: PlayerInfo) => {
       if (player.startingChips === 0) {
-        player.startingChips = 1000; // Reset to default starting chips
+        player.startingChips = 1000;
       }
     });
 
-    // Start new game with current players and their remaining chips
     this.http.post('http://localhost:8080/api/poker/start', this.players).subscribe({
       next: (response) => {
         console.log(response);
-        this.getGameStatus(); // Update the game status
+        this.getGameStatus();
       },
       error: (error) => {
         console.error('Error starting new game:', error);
@@ -179,13 +177,13 @@ export class RaiseInputComponent implements OnInit {
   resetGame(): void {
     if (confirm('Are you sure you want to reset the game? All players will start with default chips.')) {
       this.players.forEach((player: PlayerInfo) => {
-        player.startingChips = 1000; // Reset all players' chips to default
+        player.startingChips = 1000;
       });
 
       this.http.post('http://localhost:8080/api/poker/reset', {}).subscribe({
         next: (response) => {
           console.log(response);
-          this.getGameStatus(); // Update the game status
+          this.getGameStatus();
         },
         error: (error) => {
           console.error('Error resetting game:', error);
