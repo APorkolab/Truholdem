@@ -9,10 +9,11 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
 
     @Bean
-    public OpenAPI truholdemOpenAPI() {
+    public OpenAPI customOpenAPI() {
         return new OpenAPI()
-                .info(new Info().title("Truholdem Poker API")
-                        .description("API documentation for the Truholdem Poker Game application")
-                        .version("1.0.0"));
+                .info(new Info()
+                        .title("Truholdem Poker API")
+                        .version("1.0.0")
+                        .description("API documentation for the Truholdem Poker Game application"));
     }
 }
