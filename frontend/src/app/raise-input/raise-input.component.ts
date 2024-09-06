@@ -107,6 +107,8 @@ export class RaiseInputComponent implements OnInit {
       if (this.currentPlayer.betAmount === this.currentBet || this.currentPlayer.chips === 0) {
         this.isRaiseInputVisible = false;
         this.actionTaken.emit();
+        await this.getGameStatus();
+        return;
       } else {
         alert('You cannot check unless your current bet matches the highest bet or you are all-in.');
       }
@@ -130,17 +132,21 @@ export class RaiseInputComponent implements OnInit {
     }
   }
 
-  getGameStatus(): void {
-    this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
-      next: (data) => {
-        this.game = data;
-        this.initializePlayers();
-        this.setMaxRaiseAmountAfterGameStatusUpdate();
-      },
-      error: (error: HttpErrorResponse) => {
-        console.error('Error fetching game status:', error.message);
-        alert('An error occurred while fetching game status. Please try again later.');
-      }
+  getGameStatus(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
+        next: (data: Game) => {
+          this.game = data;
+          this.initializePlayers();
+          this.setMaxRaiseAmountAfterGameStatusUpdate();
+          resolve();
+        },
+        error: (error: HttpErrorResponse) => {
+          console.error('Error fetching game status:', error.message);
+          alert('An error occurred while fetching game status. Please try again later.');
+          reject(error);
+        }
+      });
     });
   }
 

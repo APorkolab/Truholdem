@@ -39,19 +39,19 @@ export class GameTableComponent implements OnInit {
 
   getGameStatus(): void {
     this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
-      next: (data) => {
+      next: (data: Game) => {
         this.game = data;
         this.setCurrentNonBotPlayerId();
         this.sortPlayers();
         this.playerActionTaken = this.isFolded() || this.playerActionTaken;
-        this.updateCurrentPot(); // Frissítsd a potot a játék állapotának lekérése után
+        this.updateCurrentPot();
       },
       error: (error: HttpErrorResponse) => {
+        console.error('Hiba a játék állapotának lekérésekor:', error.message);
         if (error.status === 404) {
-          this.startNewGame(); // Ha nincs aktív játék, új játékot indítunk
+          this.startNewGame();
         } else {
-          console.error('Error fetching game status:', error.message);
-          alert('An error occurred while fetching game status. Please try again later.');
+          alert('Hiba történt a játék állapotának lekérésekor. Kérjük, próbálja újra később.');
         }
       }
     });

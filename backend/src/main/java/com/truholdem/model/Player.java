@@ -25,6 +25,9 @@ public class Player {
 
     // Tét emelése
     public void placeBet(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Bet amount must be positive.");
+        }
         if (amount > chips) {
             throw new IllegalArgumentException("Not enough chips.");
         }
@@ -74,6 +77,7 @@ public class Player {
     }
 
     public void setFolded(boolean folded) {
+        this.isFolded = folded;
     }
 
     public void clearHand() {

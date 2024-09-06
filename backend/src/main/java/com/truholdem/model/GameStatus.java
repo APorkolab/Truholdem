@@ -2,6 +2,8 @@ package com.truholdem.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 public class GameStatus {
     private List<Card> communityCards = new ArrayList<>();
@@ -9,7 +11,6 @@ public class GameStatus {
     private GamePhase phase = GamePhase.PRE_FLOP; // Kezdő állapot
     private int currentPot = 0;
     private String message;
-
 
     private int currentBet;
 
@@ -58,7 +59,7 @@ public class GameStatus {
         if (phase.ordinal() < GamePhase.values().length - 1) {
             phase = GamePhase.values()[phase.ordinal() + 1];
         } else {
-            throw new IllegalStateException("Cannot move beyond the final game phase.");
+            phase = GamePhase.SHOWDOWN;
         }
     }
 
@@ -114,5 +115,23 @@ public class GameStatus {
 
     public void setPlayers(List<Player> players) {
         this.players = players;
+    }
+
+    public int getPot() {
+        return currentPot;
+    }
+
+    private Map<String, Boolean> playerActions = new HashMap<>();
+
+    public void setPlayerActions(Map<String, Boolean> playerActions) {
+        this.playerActions = playerActions;
+    }
+
+    public Map<String, Boolean> getPlayerActions() {
+        return playerActions;
+    }
+
+    public boolean areAllPlayersActed() {
+        return playerActions.values().stream().allMatch(acted -> acted);
     }
 }
