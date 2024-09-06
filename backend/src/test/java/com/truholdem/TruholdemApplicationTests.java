@@ -99,20 +99,39 @@ class TruholdemApplicationTests {
     }
 
     @Test
-    void testRegisterPlayer() {
+    void testRegisterPlayersWithCustomPlayers() {
         // Arrange
         List<PlayerInfo> playerInfos = Collections.singletonList(new PlayerInfo("NewPlayer", 1000, false));
-        when(pokerGameService.registerPlayer("NewPlayer", 1000, false)).thenReturn(true);
+        GameStatus mockGameStatus = new GameStatus();
+        when(pokerGameService.registerPlayers(playerInfos)).thenReturn(mockGameStatus);
 
         // Act
-        ResponseEntity<String> response = pokerGameController.registerPlayer(playerInfos);
+        ResponseEntity<GameStatus> response = pokerGameController.registerPlayers(playerInfos);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("All players registered successfully.", response.getBody());
+        assertEquals(mockGameStatus, response.getBody());
 
         // Verify the interaction with the service
-        verify(pokerGameService, times(1)).registerPlayer("NewPlayer", 1000, false);
+        verify(pokerGameService, times(1)).registerPlayers(playerInfos);
+    }
+
+    @Test
+    void testRegisterPlayersWithDefaultPlayers() {
+        // Arrange
+        List<PlayerInfo> defaultPlayers = pokerGameService.getDefaultPlayers();
+        GameStatus mockGameStatus = new GameStatus();
+        when(pokerGameService.registerPlayers(defaultPlayers)).thenReturn(mockGameStatus);
+
+        // Act
+        ResponseEntity<GameStatus> response = pokerGameController.registerPlayers(null);
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(mockGameStatus, response.getBody());
+
+        // Verify the interaction with the service
+        verify(pokerGameService, times(1)).registerPlayers(defaultPlayers);
     }
 
     @Test

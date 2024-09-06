@@ -98,49 +98,20 @@ public class PokerGameController {
                 : ResponseEntity.badRequest().body("Folding failed.");
     }
 
-    @GetMapping("/register")
-    @Operation(summary = "Get default players for registration", description = "Fetches the default players for registration")
-    public ResponseEntity<List<PlayerInfo>> getDefaultPlayers() {
-        GameStatus status = pokerGameService.getGameStatus();
-        if (status != null) {
-            List<PlayerInfo> playerInfos = status.getPlayers().stream()
-                    .map(player -> new PlayerInfo(player.getName(), player.getChips(),
-                            player.getName().startsWith("Bot")))
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(playerInfos);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @GetMapping("/register")
-    @Operation(summary = "Get default players for registration", description = "Fetches the default players for registration")
-    public ResponseEntity<List<PlayerInfo>> getPlayersForRegistration() {
-        GameStatus status = pokerGameService.getGameStatus();
-        if (status != null && status.getPlayers() != null) {
-            List<PlayerInfo> playerInfos = status.getPlayers().stream()
-                    .map(player -> new PlayerInfo(player.getName(), player.getChips(),
-                            player.getName().startsWith("Bot")))
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(playerInfos);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
     @PostMapping("/register")
-    @Operation(summary = "Register players", description = "Registers players for the poker game")
-    public ResponseEntity<String> registerPlayer(@RequestBody List<PlayerInfo> playerInfos) {
-        boolean allRegistered = playerInfos.stream()
-                .allMatch(playerInfo -> pokerGameService.registerPlayer(playerInfo.getName(),
-                        playerInfo.getStartingChips(), playerInfo.isBot()));
+    @Operation(summary = "Register players", description = "Registers players for the poker game. If no players are provided, default players will be used.")
+    public ResponseEntity<GameStatus> registerPlayers(@RequestBody(required = false) List<PlayerInfo> playerInfos) {
+        if (playerInfos == null || playerInfos.isEmpty()) {
+            // Ha nem adnak meg játékosokat, alapértelmezett játékosokat használunk
+            playerInfos = pokerGameService.getDefaultPlayers();
+        }
 
-        if (allRegistered) {
-            return ResponseEntity.ok("All players registered successfully.");
+        GameStatus gameStatus = pokerGameService.registerPlayers(playerInfos);
+
+        if (gameStatus != null) {
+            return ResponseEntity.ok(gameStatus);
         } else {
-            // Optional: Add more detailed logging or responses indicating which players
-            // failed.
-            return ResponseEntity.badRequest().body("Some players failed to register.");
+            return ResponseEntity.badRequest().body(null);
         }
     }
 

@@ -173,6 +173,22 @@ public class PokerGameService {
         }
     }
 
+    public GameStatus registerPlayers(List<PlayerInfo> players) {
+        if (players == null || players.isEmpty()) {
+            players = getDefaultPlayers();
+        }
+        return startGame(players);
+    }
+
+    public List<PlayerInfo> getDefaultPlayers() {
+        List<PlayerInfo> defaultPlayers = new ArrayList<>();
+        defaultPlayers.add(new PlayerInfo("Játékos", 1000, false));
+        defaultPlayers.add(new PlayerInfo("Bot1", 1000, true));
+        defaultPlayers.add(new PlayerInfo("Bot2", 1000, true));
+        defaultPlayers.add(new PlayerInfo("Bot3", 1000, true));
+        return defaultPlayers;
+    }
+
     public void setBlinds() {
         List<Player> activePlayers = gameStatus.getPlayers().stream()
                 .filter(player -> player.getChips() > 0 && !player.isFolded())
