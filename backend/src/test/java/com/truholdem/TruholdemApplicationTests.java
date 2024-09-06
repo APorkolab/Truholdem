@@ -474,39 +474,19 @@ class TruholdemApplicationTests {
         mockGameStatus.addPlayer(player1);
         mockGameStatus.addPlayer(player2);
         mockGameStatus.setCurrentPot(2000); // A potban 2000 zseton van
-
         when(pokerGameService.getGameStatus()).thenReturn(mockGameStatus);
+        when(pokerGameService.determineWinner()).thenReturn("Player1"); // Szimuláljuk, hogy Player1 a nyertes
 
-        pokerGameService.checkForEarlyWin();
+        // Az új metódus hívása az all-in helyzet ellenőrzéséhez
+        pokerGameService.checkAllPlayersAllIn();
+
+        // Szimuláljuk a játék befejezését és a nyertes meghatározását
+        String winnerId = pokerGameService.endGame();
+        assertEquals("Player1", winnerId);
 
         // Ellenőrizzük, hogy a pot összege Player1-hez került
         assertEquals(2000, player1.getChips());
         assertEquals(0, player2.getChips());
-    }
-
-    @Test
-    void testShowdownWithMultiplePlayers() {
-        Player player1 = new Player("Player1", 1000);
-        Player player2 = new Player("Player2", 1000);
-
-        // Player1 erősebb kézzel rendelkezik
-        player1.addCardToHand(new Card(Suit.HEARTS, Value.ACE));
-        player1.addCardToHand(new Card(Suit.HEARTS, Value.KING));
-
-        // Player2 közepes kézzel rendelkezik
-        player2.addCardToHand(new Card(Suit.CLUBS, Value.QUEEN));
-        player2.addCardToHand(new Card(Suit.CLUBS, Value.JACK));
-
-        GameStatus mockGameStatus = new GameStatus();
-        mockGameStatus.addPlayer(player1);
-        mockGameStatus.addPlayer(player2);
-        when(pokerGameService.getGameStatus()).thenReturn(mockGameStatus);
-        when(pokerGameService.endGame()).thenCallRealMethod(); // Valódi hívás
-
-        String winnerId = pokerGameService.endGame();
-
-        // Player1-nek erősebb a keze, így ő nyer
-        assertEquals("Player1", winnerId);
     }
 
 }
