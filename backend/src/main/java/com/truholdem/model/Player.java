@@ -12,6 +12,12 @@ public class Player {
     private int chips = 1000; // Kezdő zsetonok
     private int betAmount = 0; // Jelenlegi tét
     private boolean isFolded = false; // Jelzi, hogy a játékos passzolt-e
+    private boolean isBot;
+
+    public Player(String name, int startingChips, boolean isBot) {
+        this(name, startingChips);
+        this.isBot = isBot;
+    }
 
     public Player(String name, int startingChips) {
         this.id = UUID.randomUUID().toString();
@@ -60,6 +66,10 @@ public class Player {
         return id;
     }
 
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public List<Card> getHand() {
         return new ArrayList<>(hand);
     }
@@ -86,6 +96,10 @@ public class Player {
 
     public String getName() {
         return name;
+    }
+
+    public boolean isBot() {
+        return isBot;
     }
 
     public void setName(String name) {

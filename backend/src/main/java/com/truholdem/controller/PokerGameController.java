@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/poker")
@@ -68,22 +69,14 @@ public class PokerGameController {
     }
 
     @PostMapping("/bet")
-    @Operation(summary = "Place a bet", description = "Player places a bet with the specified amount")
-    public ResponseEntity<Map<String, String>> playerBet(
-            @Parameter(description = "Bet details including player ID and amount") @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Map<String, String>> playerBet(@RequestBody Map<String, Object> payload) {
         String playerId = (String) payload.get("playerId");
         int amount;
         try {
             amount = (int) payload.get("amount");
-        } catch (ClassCastException | NullPointerException e) {
+        } catch (Exception e) {
             Map<String, String> response = new HashMap<>();
             response.put("error", "Invalid amount format.");
-            return ResponseEntity.badRequest().body(response);
-        }
-
-        if (amount <= 0) {
-            Map<String, String> response = new HashMap<>();
-            response.put("error", "Amount must be greater than zero.");
             return ResponseEntity.badRequest().body(response);
         }
 
@@ -93,31 +86,61 @@ public class PokerGameController {
             response.put("message", "Bet placed successfully.");
             return ResponseEntity.ok(response);
         } else {
-            response.put("error", "Bet placement failed. Please check the game state and try again.");
+            response.put("error", "Bet placement failed. Check the game state.");
             return ResponseEntity.badRequest().body(response);
         }
     }
 
     @PostMapping("/fold")
-    @Operation(summary = "Player folds", description = "The specified player folds their hand")
-    public ResponseEntity<String> playerFold(
-            @Parameter(description = "ID of the player who is folding") @RequestParam String playerId) {
-        boolean foldResult = pokerGameService.playerFold(playerId);
-        if (foldResult) {
-            return ResponseEntity.ok("Player folded successfully.");
+    public ResponseEntity<String> playerFold(@RequestParam String playerId) {
+        boolean success = pokerGameService.playerFold(playerId);
+        return success ? ResponseEntity.ok("Player folded successfully.")
+                : ResponseEntity.badRequest().body("Folding failed.");
+    }
+
+    @GetMapping("/register")
+    @Operation(summary = "Get default players for registration", description = "Fetches the default players for registration")
+    public ResponseEntity<List<PlayerInfo>> getDefaultPlayers() {
+        GameStatus status = pokerGameService.getGameStatus();
+        if (status != null) {
+            List<PlayerInfo> playerInfos = status.getPlayers().stream()
+                    .map(player -> new PlayerInfo(player.getName(), player.getChips(),
+                            player.getName().startsWith("Bot")))
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(playerInfos);
         } else {
-            return ResponseEntity.badRequest().body("Folding failed or player already folded.");
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/register")
+    @Operation(summary = "Get default players for registration", description = "Fetches the default players for registration")
+    public ResponseEntity<List<PlayerInfo>> getPlayersForRegistration() {
+        GameStatus status = pokerGameService.getGameStatus();
+        if (status != null && status.getPlayers() != null) {
+            List<PlayerInfo> playerInfos = status.getPlayers().stream()
+                    .map(player -> new PlayerInfo(player.getName(), player.getChips(),
+                            player.getName().startsWith("Bot")))
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(playerInfos);
+        } else {
+            return ResponseEntity.notFound().build();
         }
     }
 
     @PostMapping("/register")
-    @Operation(summary = "Register a new player", description = "Registers a new player for the poker game")
-    public ResponseEntity<String> registerPlayer(
-            @Parameter(description = "Player information including name, starting chips, and if they are a bot") @RequestBody PlayerInfo playerInfo) {
-        if (pokerGameService.registerPlayer(playerInfo.getName(), playerInfo.getStartingChips(), playerInfo.isBot())) {
-            return ResponseEntity.ok("Player registered successfully.");
+    @Operation(summary = "Register players", description = "Registers players for the poker game")
+    public ResponseEntity<String> registerPlayer(@RequestBody List<PlayerInfo> playerInfos) {
+        boolean allRegistered = playerInfos.stream()
+                .allMatch(playerInfo -> pokerGameService.registerPlayer(playerInfo.getName(),
+                        playerInfo.getStartingChips(), playerInfo.isBot()));
+
+        if (allRegistered) {
+            return ResponseEntity.ok("All players registered successfully.");
         } else {
-            return ResponseEntity.badRequest().body("Player registration failed.");
+            // Optional: Add more detailed logging or responses indicating which players
+            // failed.
+            return ResponseEntity.badRequest().body("Some players failed to register.");
         }
     }
 
@@ -161,15 +184,14 @@ public class PokerGameController {
     }
 
     @PostMapping("/raise")
-    @Operation(summary = "Player raises", description = "A player raises the bet amount")
-    public ResponseEntity<Map<String, Object>> playerRaise(
-            @Parameter(description = "Raise details including player ID and amount") @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Map<String, Object>> playerRaise(@RequestBody Map<String, Object> payload) {
         String playerId = (String) payload.get("playerId");
         int amount = (int) payload.get("amount");
-        boolean success = pokerGameService.playerRaise(playerId, amount);
 
+        boolean success = pokerGameService.playerRaise(playerId, amount);
         Map<String, Object> response = new HashMap<>();
-        response.put("message", success ? "Sikeres emelés." : "Sikertelen emelés.");
+        response.put("message", success ? "Raise successful." : "Raise failed.");
         return ResponseEntity.ok(response);
     }
+
 }

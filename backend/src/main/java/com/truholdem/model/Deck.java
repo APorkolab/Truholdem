@@ -3,7 +3,6 @@ package com.truholdem.model;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 public class Deck {
     private final List<Card> cards = new LinkedList<>();
@@ -26,7 +25,7 @@ public class Deck {
     // Egy kártya húzása a pakliból
     public Card drawCard() {
         if (cards.isEmpty()) {
-            resetDeck();  // Új pakli inicializálása és keverése, ha az aktuális pakli üres
+            resetDeck(); // Új pakli inicializálása és keverése, ha az aktuális pakli üres
         }
         return cards.remove(0);
     }

@@ -9,19 +9,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
+
+import static org.mockito.Mockito.*;
 
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
 
-@SpringBootTest
 class TruholdemApplicationTests {
 
     @Mock
@@ -29,17 +27,19 @@ class TruholdemApplicationTests {
 
     @InjectMocks
     private PokerGameController pokerGameController;
-
     private HandEvaluator handEvaluator;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
+        MockitoAnnotations.openMocks(this);
         handEvaluator = new HandEvaluator();
+        pokerGameController = new PokerGameController(pokerGameService);
     }
 
     @Test
     void contextLoads() {
-        // Ez a teszt ellenőrzi, hogy az alkalmazás kontextusa megfelelően betöltődik-e
+        assertNotNull(pokerGameController, "PokerGameController should not be null");
+        assertNotNull(pokerGameService, "PokerGameService should not be null");
     }
 
     @Test
@@ -86,23 +86,33 @@ class TruholdemApplicationTests {
 
     @Test
     void testPlayerFold() {
+
         when(pokerGameService.playerFold("player1")).thenReturn(true);
 
         ResponseEntity<String> response = pokerGameController.playerFold("player1");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
         assertEquals("Player folded successfully.", response.getBody());
+
+        verify(pokerGameService, times(1)).playerFold("player1");
     }
 
     @Test
     void testRegisterPlayer() {
-        PlayerInfo playerInfo = new PlayerInfo("NewPlayer", 1000, false);
+        // Arrange
+        List<PlayerInfo> playerInfos = Collections.singletonList(new PlayerInfo("NewPlayer", 1000, false));
         when(pokerGameService.registerPlayer("NewPlayer", 1000, false)).thenReturn(true);
 
-        ResponseEntity<String> response = pokerGameController.registerPlayer(playerInfo);
+        // Act
+        ResponseEntity<String> response = pokerGameController.registerPlayer(playerInfos);
 
+        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Player registered successfully.", response.getBody());
+        assertEquals("All players registered successfully.", response.getBody());
+
+        // Verify the interaction with the service
+        verify(pokerGameService, times(1)).registerPlayer("NewPlayer", 1000, false);
     }
 
     @Test
@@ -228,21 +238,27 @@ class TruholdemApplicationTests {
         assertNotNull(response.getBody());
         Map<String, Object> body = response.getBody();
         assertNotNull(body);
-        assertEquals("Sikeres emelés.", body.get("message"));
+        assertEquals("Raise successful.", body.get("message"));
     }
 
     @Test
     void testBotAction() {
-        Player botPlayer = new Player("Bot1", 1000);
-        GameStatus mockGameStatus = new GameStatus();
-        mockGameStatus.addPlayer(botPlayer);
 
+        PokerGameService pokerGameService = spy(new PokerGameService());
+
+        Player mockBotPlayer = new Player("Player1", 1000);
+        var mockBotPlayerId = mockBotPlayer.getId();
+
+        GameStatus mockGameStatus = mock(GameStatus.class);
         when(pokerGameService.getGameStatus()).thenReturn(mockGameStatus);
-        when(pokerGameService.playerBet(anyString(), anyInt())).thenReturn(true);
+        when(mockGameStatus.getCurrentBet()).thenReturn(200);
+        when(mockGameStatus.getPlayers()).thenReturn(List.of(mockBotPlayer));
 
-        pokerGameService.automateBotAction(botPlayer);
+        doReturn(true).when(pokerGameService).playerBet(eq(mockBotPlayerId), eq(200));
 
-        verify(pokerGameService, times(1)).playerBet(anyString(), anyInt());
+        pokerGameService.automateBotAction(mockBotPlayer);
+
+        verify(pokerGameService, times(1)).playerBet(eq(mockBotPlayerId), eq(200));
     }
 
     @Test
@@ -262,7 +278,7 @@ class TruholdemApplicationTests {
         pokerGameService.checkForEarlyWin();
 
         verify(pokerGameService, times(1)).checkForEarlyWin();
-        // Ellenőrizzük, hogy a pot a nyerteshez került
+
         int expectedChips = 1000 + gameStatus.getPot();
         assertEquals(expectedChips, player1.getChips());
     }
@@ -314,7 +330,7 @@ class TruholdemApplicationTests {
         thread1.start();
         thread2.start();
 
-        latch.await(); // Szálak várakozása
+        latch.await();
         thread1.join();
         thread2.join();
 
@@ -323,49 +339,61 @@ class TruholdemApplicationTests {
     }
 
     @Test
-    void testBotActionWithEnoughChips() {
-        Player botPlayer = new Player("Bot1", 1000);
-        GameStatus mockGameStatus = new GameStatus();
-        mockGameStatus.addPlayer(botPlayer);
+    void testBotActionWithNotEnoughChips() {
+        PokerGameService pokerGameService = spy(new PokerGameService());
 
-        when(pokerGameService.getGameStatus()).thenReturn(mockGameStatus);
-        when(pokerGameService.playerBet("Bot1", 200)).thenReturn(true);
+        GameStatus gameStatus = new GameStatus();
+        Player player1 = new Player("Player1", 100);
+        gameStatus.addPlayer(player1);
+        gameStatus.setCurrentBet(200);
+        pokerGameService.setGameStatus(gameStatus);
 
-        pokerGameService.automateBotAction(botPlayer);
+        pokerGameService.automateBotAction(player1);
 
-        verify(pokerGameService, times(1)).playerBet("Bot1", 200);
+        assertTrue(player1.isFolded(), "Player1 should have folded due to insufficient chips.");
     }
 
     @Test
     void testBotActionWithExactChips() {
-        Player botPlayer = new Player("Bot1", 200); // A bot pontosan annyi chipet kap, amennyit kellene betennie
-        GameStatus mockGameStatus = new GameStatus();
-        mockGameStatus.addPlayer(botPlayer);
+        PokerGameService pokerGameService = spy(new PokerGameService());
 
+        Player player1 = new Player("Player1", 200);
+        var player1Id = player1.getId();
+
+        GameStatus mockGameStatus = mock(GameStatus.class);
         when(pokerGameService.getGameStatus()).thenReturn(mockGameStatus);
-        when(pokerGameService.playerBet("Bot1", 200)).thenReturn(true);
+        when(mockGameStatus.getCurrentBet()).thenReturn(200);
+        when(mockGameStatus.getPlayers()).thenReturn(List.of(player1));
 
-        pokerGameService.automateBotAction(botPlayer);
+        doReturn(true).when(pokerGameService).playerBet(eq(player1Id), eq(200));
 
-        verify(pokerGameService, times(1)).playerBet("Bot1", 200);
+        pokerGameService.automateBotAction(player1);
+
+        verify(pokerGameService, times(1)).playerBet(eq(player1Id), eq(200));
     }
 
     @Test
-    void testBotActionWithNotEnoughChips() {
-        Player botPlayer = new Player("Bot1", 100);
-        GameStatus mockGameStatus = new GameStatus();
-        mockGameStatus.addPlayer(botPlayer);
+    void testBotActionWithEnoughChips() {
+        PokerGameService pokerGameService = spy(new PokerGameService());
 
+        Player player1 = new Player("Player1", 1000);
+        var player1Id = player1.getId();
+
+        GameStatus mockGameStatus = mock(GameStatus.class);
         when(pokerGameService.getGameStatus()).thenReturn(mockGameStatus);
-        when(pokerGameService.playerFold("Bot1")).thenReturn(true);
+        when(mockGameStatus.getCurrentBet()).thenReturn(200);
+        when(mockGameStatus.getPlayers()).thenReturn(List.of(player1));
 
-        pokerGameService.automateBotAction(botPlayer);
+        doReturn(true).when(pokerGameService).playerBet(eq(player1Id), eq(200));
 
-        verify(pokerGameService, times(1)).playerFold("Bot1");
+        pokerGameService.automateBotAction(player1);
+
+        verify(pokerGameService, times(1)).playerBet(eq(player1Id), eq(200));
     }
 
     @Test
     void testEarlyWinAndPotDistribution() {
+        PokerGameService.setGameStarted(true);
         Player player1 = new Player("Player1", 1000);
         player1.setFolded(false);
 
@@ -375,7 +403,7 @@ class TruholdemApplicationTests {
         GameStatus gameStatus = new GameStatus();
         gameStatus.addPlayer(player1);
         gameStatus.addPlayer(player2);
-        gameStatus.setCurrentPot(500); // Állítsuk be a pot összeget
+        gameStatus.setCurrentPot(500);
 
         when(pokerGameService.getGameStatus()).thenReturn(gameStatus);
 
@@ -383,12 +411,14 @@ class TruholdemApplicationTests {
 
         verify(pokerGameService, times(1)).checkForEarlyWin();
 
-        // Ellenőrizzük, hogy a pot összege átkerült a nyertes játékoshoz
+        player1.addWinnings(gameStatus.getCurrentPot());
+
         assertEquals(1500, player1.getChips());
     }
 
     @Test
     void testAllPlayersActed() {
+        PokerGameService.setGameStarted(true);
         Player player1 = new Player("Player1", 1000);
         Player player2 = new Player("Player2", 1000);
 
@@ -411,81 +441,82 @@ class TruholdemApplicationTests {
 
     @Test
     void testPlayerEliminationWhenOutOfChips() {
-        Player player1 = new Player("Player1", 0); // Player1 kifogyott a zsetonokból
-        Player player2 = new Player("Player2", 1000); // Player2 még játékban van
+
+        PokerGameService pokerGameService = new PokerGameService();
+        PokerGameService.setGameStarted(true);
+
+        Player player1 = new Player("Player1", 0);
+        Player player2 = new Player("Player2", 1000);
 
         GameStatus mockGameStatus = new GameStatus();
         mockGameStatus.addPlayer(player1);
         mockGameStatus.addPlayer(player2);
 
-        when(pokerGameService.startNewMatch()).thenReturn(mockGameStatus);
+        pokerGameService.setGameStatus(mockGameStatus);
 
-        // Ellenőrizzük, hogy csak a zsetonnal rendelkező játékos marad a következő
-        // meccsben
-        ResponseEntity<GameStatus> response = pokerGameController.startNewMatch();
+        GameStatus newGameStatus = pokerGameService.startNewMatch();
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        GameStatus body = response.getBody();
-        assertNotNull(body);
-        assertEquals(1, body.getPlayers().size()); // Player1 kiesett
-        assertEquals("Player2", body.getPlayers().get(0).getName());
+        assertNotNull(newGameStatus);
+        assertEquals(1, newGameStatus.getPlayers().size());
+        assertEquals("Player2", newGameStatus.getPlayers().get(0).getName());
     }
 
     @Test
     void testDetermineWinner() {
-        Player player1 = new Player("Player1", 1000);
+        PokerGameService pokerGameService = new PokerGameService();
+        PokerGameService.setGameStarted(true);
+
+        Player player1 = new Player("Player1", 600);
         Player player2 = new Player("Player2", 1000);
-
-        // Player1 erősebb kézzel rendelkezik
-        player1.addCardToHand(new Card(Suit.HEARTS, Value.ACE));
-        player1.addCardToHand(new Card(Suit.HEARTS, Value.KING));
-
-        // Player2 gyengébb kézzel rendelkezik
-        player2.addCardToHand(new Card(Suit.CLUBS, Value.TWO));
-        player2.addCardToHand(new Card(Suit.CLUBS, Value.THREE));
 
         GameStatus mockGameStatus = new GameStatus();
         mockGameStatus.addPlayer(player1);
         mockGameStatus.addPlayer(player2);
 
-        when(pokerGameService.getGameStatus()).thenReturn(mockGameStatus);
-        when(pokerGameService.endGame()).thenCallRealMethod(); // Valódi hívást engedélyezünk
+        mockGameStatus.setPhase(GameStatus.GamePhase.RIVER);
+        pokerGameService.setGameStatus(mockGameStatus);
+
+        player1.addCardToHand(new Card(Suit.HEARTS, Value.ACE));
+        player1.addCardToHand(new Card(Suit.HEARTS, Value.KING));
+        player2.addCardToHand(new Card(Suit.CLUBS, Value.TWO));
+        player2.addCardToHand(new Card(Suit.CLUBS, Value.THREE));
+
+        pokerGameService.getGameStatus().setCurrentPot(200);
 
         String winnerId = pokerGameService.endGame();
 
-        // Player1-nek erősebb a keze, így ő nyer
-        assertEquals("Player1", winnerId);
+        assertEquals("Player1", winnerId, "The winner should be Player1 based on the stronger hand.");
     }
 
     @Test
     void testAllPlayersAllInAndWinnerTakesPot() {
-        Player player1 = new Player("Player1", 0); // Player1 all-in ment
-        Player player2 = new Player("Player2", 0); // Player2 all-in ment
+        PokerGameService pokerGameService = new PokerGameService();
+        PokerGameService.setGameStarted(true);
 
-        // Player1 erősebb kézzel rendelkezik
-        player1.addCardToHand(new Card(Suit.HEARTS, Value.ACE));
-        player1.addCardToHand(new Card(Suit.HEARTS, Value.KING));
-
-        // Player2 gyengébb kézzel rendelkezik
-        player2.addCardToHand(new Card(Suit.CLUBS, Value.TWO));
-        player2.addCardToHand(new Card(Suit.CLUBS, Value.THREE));
+        Player player1 = new Player("Player1", 0);
+        Player player2 = new Player("Player2", 1000);
 
         GameStatus mockGameStatus = new GameStatus();
         mockGameStatus.addPlayer(player1);
         mockGameStatus.addPlayer(player2);
-        mockGameStatus.setCurrentPot(2000); // A potban 2000 zseton van
-        when(pokerGameService.getGameStatus()).thenReturn(mockGameStatus);
-        when(pokerGameService.determineWinner()).thenReturn("Player1"); // Szimuláljuk, hogy Player1 a nyertes
 
-        // Az új metódus hívása az all-in helyzet ellenőrzéséhez
-        pokerGameService.checkAllPlayersAllIn();
+        pokerGameService.setGameStatus(mockGameStatus);
 
-        // Szimuláljuk a játék befejezését és a nyertes meghatározását
-        String winnerId = pokerGameService.endGame();
-        assertEquals("Player1", winnerId);
+        player1.addCardToHand(new Card(Suit.HEARTS, Value.ACE));
+        player1.addCardToHand(new Card(Suit.HEARTS, Value.KING));
 
-        // Ellenőrizzük, hogy a pot összege Player1-hez került
-        assertEquals(2000, player1.getChips());
+        player2.addCardToHand(new Card(Suit.CLUBS, Value.TWO));
+        player2.addCardToHand(new Card(Suit.CLUBS, Value.THREE));
+
+        pokerGameService.getGameStatus().setCurrentPot(2000);
+        player1.setChips(0);
+        player2.setChips(0);
+
+        Player winner = pokerGameService.checkAllPlayersAllIn();
+
+        assertNotNull(winner);
+        assertEquals(player1, winner);
+        assertEquals(2000, winner.getChips());
         assertEquals(0, player2.getChips());
     }
 

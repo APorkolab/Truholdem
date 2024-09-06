@@ -1,15 +1,16 @@
 package com.truholdem.model;
 
 public enum Value {
-    TWO("2"), THREE("3"), FOUR("4"), FIVE("5"), SIX("6"), SEVEN("7"), EIGHT("8"), NINE("9"), TEN("10"), JACK("J"), QUEEN("Q"), KING("K"), ACE("A");
+    TWO(2), THREE(3), FOUR(4), FIVE(5), SIX(6), SEVEN(7), EIGHT(8), NINE(9), TEN(10), JACK(11), QUEEN(12), KING(13),
+    ACE(14);
 
-    private final String label;
+    private final int strength;
 
-    Value(String label) {
-        this.label = label;
+    Value(int strength) {
+        this.strength = strength;
     }
 
-    public String getLabel() {
-        return label;
+    public int getStrength() {
+        return strength;
     }
 }
