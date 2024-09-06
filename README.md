@@ -1,4 +1,4 @@
-# Truholdem
+# Truholdem v.1.3.0
 
 Truholdem is a sophisticated poker program designed to offer a comprehensive platform for learning, practicing, and simulating Texas Hold'em poker games. This README provides an in-depth overview of the project, installation instructions, usage guidelines, and contribution details.
 

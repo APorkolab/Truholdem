@@ -31,15 +31,6 @@ public class PokerGameController {
         this.pokerGameService = pokerGameService;
     }
 
-    @GetMapping("/")
-    @Operation(summary = "Welcome message", description = "Displays a welcome message and provides the Swagger documentation URL")
-    public ResponseEntity<Map<String, String>> welcome() {
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Welcome to Truholdem Poker API!");
-        response.put("documentation", "Swagger documentation is available at: /swagger-ui.html");
-        return ResponseEntity.ok(response);
-    }
-
     @PostMapping("/start")
     @Operation(summary = "Start a new game", description = "Initializes a new poker game with the provided players")
     @ApiResponses(value = {
