@@ -36,10 +36,9 @@ public class GameStatus {
     }
 
     // Játékos hozzáadása
-    public void addPlayer(Player player) {
-        if (player != null && !players.contains(player)) {
-            players.add(player);
-        }
+    public void addPlayer(PlayerInfo playerInfo) {
+        Player player = new Player(playerInfo.getName(), playerInfo.getStartingChips(), playerInfo.isBot());
+        this.players.add(player);
     }
 
     // Játékos eltávolítása

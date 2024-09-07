@@ -9,6 +9,7 @@
     "test": "ng test"
   },
   "private": true,
+  "homepage": "https://www.truholdem.porkolab.hu",
   "dependencies": {
     "@angular/animations": "^18.2.1",
     "@angular/cli": "^18.2.1",

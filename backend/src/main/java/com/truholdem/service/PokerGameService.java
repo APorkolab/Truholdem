@@ -35,10 +35,10 @@ public class PokerGameService {
     }
 
     private void initializeDefaultPlayers() {
-        gameStatus.addPlayer(new Player("Játékos", 1000));
-        gameStatus.addPlayer(new Player("Bot1", 1000, true));
-        gameStatus.addPlayer(new Player("Bot2", 1000, true));
-        gameStatus.addPlayer(new Player("Bot3", 1000, true));
+        gameStatus.addPlayer(new PlayerInfo("Játékos", 1000, false));
+        gameStatus.addPlayer(new PlayerInfo("Bot1", 1000, true));
+        gameStatus.addPlayer(new PlayerInfo("Bot2", 1000, true));
+        gameStatus.addPlayer(new PlayerInfo("Bot3", 1000, true));
     }
 
     public Map<String, Boolean> getPlayerActions() {
@@ -225,14 +225,22 @@ public class PokerGameService {
     }
 
     private void dealInitialCards() {
+        if (deck.cardsLeft() < gameStatus.getPlayers().size() * 2) {
+            // Pakli újrakeverése, ha nincs elég kártya a kezdeti lapok kiosztásához
+            deck.shuffle();
+            System.out.println("A pakli újra lett keverve, mert nem volt elég lap.");
+        }
+
         gameStatus.getPlayers().forEach(player -> {
             player.clearHand();
             for (int i = 0; i < 2; i++) {
                 if (deck.cardsLeft() == 0) {
-                    deck.shuffle();
+                    deck.shuffle(); // A paklit újra megkeverjük, ha kifogytunk a lapokból.
                 }
                 player.addCardToHand(deck.drawCard());
             }
+
+            // Ellenőrzés, hogy minden játékos két lapot kapott
             if (player.getHand().size() != 2) {
                 throw new IllegalStateException("Player did not receive two cards.");
             }
@@ -245,13 +253,8 @@ public class PokerGameService {
 
     public boolean registerPlayer(String playerName, int startingChips, boolean isBot) {
         if (!gameStarted && gameStatus.getPlayers().size() < 4) {
-            Player newPlayer = new Player(playerName, startingChips);
+            PlayerInfo newPlayer = new PlayerInfo(playerName, startingChips, isBot);
             newPlayer.setFolded(false);
-            if (isBot) {
-                newPlayer.setName("Bot" + playerName);
-            } else {
-                newPlayer.setName(playerName);
-            }
             gameStatus.addPlayer(newPlayer);
             return true;
         }
@@ -270,13 +273,15 @@ public class PokerGameService {
     }
 
     public Optional<GameStatus> dealFlop() {
-        if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.PRE_FLOP && allPlayersActed()) {
+        // Ensure that players have either called or folded
+        if (gameStarted && gameStatus.getPhase() == GameStatus.GamePhase.PRE_FLOP && areAllBetsEqual()
+                && allPlayersActed()) {
             performFlop();
             gameStatus.setPhase(GameStatus.GamePhase.FLOP);
             resetPlayerActions();
             return Optional.of(gameStatus);
         }
-        return Optional.empty();
+        return Optional.empty(); // Return invalid state if conditions are not met
     }
 
     public Optional<GameStatus> dealTurn() {
@@ -364,11 +369,10 @@ public class PokerGameService {
     public void checkForEarlyWin() {
         long activePlayers = gameStatus.getPlayers().stream()
                 .filter(p -> !p.isFolded() && p.getChips() > 0)
-
                 .count();
 
         if (activePlayers == 1) {
-            endGameEarly();
+            endGameEarly(); // End the game if only one player remains
         }
     }
 
@@ -438,11 +442,9 @@ public class PokerGameService {
     private void proceedToNextRound() {
         gameStatus.getPlayers().forEach(player -> {
             if (!playerActions.get(player.getId()) && player.getName().startsWith("Bot")) {
-                automateBotAction(player);
+                automateBotAction(player); // Bots act automatically
             }
         });
-
-        ensureBotsMatchBets();
 
         if (areAllBetsEqual() && allPlayersActed()) {
             switch (gameStatus.getPhase()) {
@@ -461,13 +463,20 @@ public class PokerGameService {
                             .collect(Collectors.toList()));
                     resetGame(false);
                     break;
-                case SHOWDOWN:
-                    break;
                 default:
                     break;
             }
             resetPlayerActions();
         }
+    }
+
+    public boolean playerCheck(String playerId) {
+        Player player = findPlayerById(playerId);
+        if (player != null && player.getBetAmount() == currentBet) {
+            playerActions.put(playerId, true);
+            return true; // Player checked successfully
+        }
+        return false; // Cannot check if the current bet is higher
     }
 
     public boolean areAllPlayersActed() {
@@ -505,17 +514,17 @@ public class PokerGameService {
     }
 
     public GameStatus startNewMatch() {
+        // Retain players with chips > 0
         List<Player> players = new ArrayList<>(gameStatus.getPlayers());
-        playerEliminationWhenOutOfChips();
         players.removeIf(player -> player.getChips() <= 0);
 
         if (players.isEmpty()) {
-            return null;
+            return null; // End the game if no players left
         }
 
-        resetGame(true);
+        resetGame(true); // Keep players without resetting chips
         this.deck.shuffle();
-        gameStatus.setPlayers(players);
+        gameStatus.setPlayers(players); // Reuse players with current wealth
         dealInitialCards();
         setBlinds();
         gameStatus.setPhase(GameStatus.GamePhase.PRE_FLOP);
@@ -596,4 +605,17 @@ public class PokerGameService {
         return false;
     }
 
+    public boolean changePlayerName(String playerId, String newName) {
+        if (gameStatus == null || gameStatus.getPlayers() == null) {
+            return false;
+        }
+
+        for (Player player : gameStatus.getPlayers()) {
+            if (player.getId().equals(playerId)) {
+                player.setName(newName);
+                return true;
+            }
+        }
+        return false;
+    }
 }

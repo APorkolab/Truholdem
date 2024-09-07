@@ -13,7 +13,7 @@
 		</div>
 
 		<div class="player-info">
-			<span>{{ player.name || 'Anonymous' }}</span>
+			<span>{{ player.name.replace('Bot', '') || 'Anonymous' }}</span>
 			<span> Chips: {{ player.chips }}</span>
 			<span *ngIf="isFolded()"> Folded</span>
 		</div>
@@ -26,8 +26,11 @@
 	</div>
 
 	<div class="actions">
-		<button *ngIf="game?.phase !== 'RIVER'" (click)="fold()">Fold</button>
-		<app-raise-input *ngIf="!isFolded()" [game]="game" (actionTaken)="handleRaiseAction()"></app-raise-input>
+		<button *ngIf="!isFolded() && game?.phase !== 'RIVER'" (click)="check()">Check</button>
+		<button *ngIf="!isFolded() && game?.phase !== 'RIVER'" (click)="fold()">Fold</button>
+		<app-raise-input *ngIf="!isFolded() && game?.phase !== 'RIVER'" [game]="game"
+			(actionTaken)="handleRaiseAction()"></app-raise-input>
+
 		<div>Pots: {{ currentPot || 0 }}</div>
 		<button *ngIf="game?.phase === 'PRE_FLOP' && isFolded()" (click)="dealFlop()">Deal Flop</button>
 		<button *ngIf="game?.phase === 'FLOP' && isFolded()" (click)="dealTurn()">Deal Turn</button>
@@ -46,7 +49,7 @@
 					<p>{{ gameResultMessage }}</p>
 				</div>
 				<div class="modal-footer">
-					<!-- <button type="button" class="btn btn-secondary" (click)="resetGame()">Reset Game</button> -->
+					<button type="button" class="btn btn-secondary" (click)="resetGame()">Reset Game</button>
 					<button type="button" class="btn btn-primary" (click)="startNewMatch()">Start New Match</button>
 					<button type="button" class="btn btn-secondary" (click)="closeModal()">Close</button>
 				</div>

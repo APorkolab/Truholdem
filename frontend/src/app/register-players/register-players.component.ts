@@ -1,7 +1,10 @@
 import { Component } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { PlayerService } from '../services/player.service';
+import { Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
 
-interface PlayerInfo {
+export interface PlayerInfo {
   name: string;
   startingChips: number;
   isBot: boolean;
@@ -16,67 +19,99 @@ export class RegisterPlayersComponent {
   maxBotPlayers = 3;
   maxHumanPlayers = 1;
   players: PlayerInfo[] = [
-    { name: '', startingChips: 1000, isBot: true }
+    { name: this.generateRandomName(), startingChips: 1000, isBot: false },  // Human player by default
+    { name: this.generateRandomName(), startingChips: 1000, isBot: true },   // Bot players
+    { name: this.generateRandomName(), startingChips: 1000, isBot: true },
+    { name: this.generateRandomName(), startingChips: 1000, isBot: true }
   ];
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private playerService: PlayerService, private router: Router) { }
 
+  // Új játékos hozzáadása (bot vagy nem bot)
   addPlayer(): void {
-    if (this.players.length < this.maxBotPlayers + this.maxHumanPlayers) {
-      this.players.push({ name: '', startingChips: 1000, isBot: true });
+    if (this.players.length >= 4) {
+      alert('You can\'t have more than 4 players.');
+      return;
     }
+    // Hozzáadáskor generálunk egy nevet
+    this.players.push({ name: this.generateRandomName(), startingChips: 1000, isBot: true });
   }
 
+  // Játékos eltávolítása
   removePlayer(index: number): void {
     this.players.splice(index, 1);
   }
 
-  private assignNamesToPlayers(): void {
+  // A játékosok nevének véglegesítése (amelyek meg lettek adva, vagy generált nevek)
+  private finalizeNames(): void {
     this.players.forEach(player => {
       if (!player.name.trim()) {
         player.name = this.generateRandomName();
+      }
+      if (player.isBot && !player.name.startsWith('Bot')) {
+        player.name = 'Bot ' + player.name;
       }
     });
   }
 
   onSubmit(): void {
-    const botCount = this.players.filter(player => player.isBot).length;
-    const humanCount = this.players.length - botCount;
+    // Nevek véglegesítése
+    this.finalizeNames();
 
-    if (humanCount > this.maxHumanPlayers) {
-      alert(`Maximum ${this.maxHumanPlayers} human player allowed.`);
-      return;
-    }
-
-    if (botCount > this.maxBotPlayers) {
-      alert(`Maximum ${this.maxBotPlayers} bot players allowed.`);
-      return;
-    }
-
-    if (humanCount === 0) {
-      alert('At least one human player is required to start the game.');
-      return;
-    }
-
-    if (this.players.length < 2) {
-      alert('At least two players are required to start the game.');
-      return;
-    }
-
-    this.assignNamesToPlayers();
-
-    this.http.post('http://localhost:8080/api/poker/start', this.players).subscribe({
-      next: (response) => {
-        console.log(response);
-        window.location.href = '/start';
+    // Játék visszaállítása
+    this.http.post('http://localhost:8080/api/poker/reset', {}).subscribe({
+      next: () => {
+        // A játékosok regisztrálása a visszaállítás után
+        this.registerPlayers();
       },
       error: (error: HttpErrorResponse) => {
-        console.error(error);
+        console.error('Error resetting game:', error.message);
+        alert('An error occurred while resetting the game. Please try again later.');
+      }
+    });
+  }
+
+  registerPlayers(): void {
+    this.http.post<any>('http://localhost:8080/api/poker/start', this.players).subscribe({
+      next: (response: any) => {
+        if (response && response.players && Array.isArray(response.players)) {
+          this.changePlayerNames(response.players);
+        } else {
+          console.error('Unexpected response format. Expected players array but got:', response);
+          alert('Unexpected response from server.');
+        }
+      },
+      error: (error: HttpErrorResponse) => {
+        console.error('Error registering players:', error.message);
         alert('An error occurred during registration. Please try again later.');
       }
     });
   }
 
+  changePlayerNames(serverPlayers: any[]): void {
+    const changeNameRequests = serverPlayers.map((serverPlayer, index) => {
+      const clientPlayer = this.players[index];
+      return this.http.post('http://localhost:8080/api/poker/change-name', {
+        playerId: serverPlayer.id,
+        newName: clientPlayer.name
+      });
+    });
+
+    forkJoin(changeNameRequests).subscribe({
+      next: () => {
+        // Játékosok mentése a PlayerService-be
+        this.playerService.setPlayers(this.players);
+        // Navigáció csak akkor, ha sikeres a regisztráció és névváltoztatás
+        this.router.navigate(['/start']);
+      },
+      error: (error: HttpErrorResponse) => {
+        console.error('Error changing player names:', error.message);
+        alert('An error occurred while changing player names. Please try again later.');
+      }
+    });
+  }
+
+  // Név generálása (alapértelmezett név játékosnak vagy botnak)
   private generateRandomName(): string {
     const commonNames = [
       'James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth',
@@ -90,7 +125,6 @@ export class RegisterPlayersComponent {
       'Frank', 'Samantha', 'Benjamin', 'Katherine', 'Gregory', 'Christine', 'Raymond', 'Debra', 'Samuel', 'Rachel',
       'Patrick', 'Catherine', 'Alexander', 'Carolyn', 'Jack', 'Janet', 'Dennis', 'Ruth', 'Jerry', 'Maria'
     ];
-    const randomIndex = Math.floor(Math.random() * commonNames.length);
-    return commonNames[randomIndex];
+    return commonNames[Math.floor(Math.random() * commonNames.length)];
   }
 }

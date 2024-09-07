@@ -1,1 +1,7 @@
-<router-outlet></router-outlet>
+<div>
+	<!-- Regisztrációs komponens -->
+	<app-register-players *ngIf="!gameStarted"></app-register-players>
+
+	<!-- Játéktér komponens -->
+	<app-game-table *ngIf="gameStarted"></app-game-table>
+</div>

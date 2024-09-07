@@ -76,17 +76,24 @@ public class PokerGameController {
             @ApiResponse(responseCode = "400", description = "Invalid game state"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<?> dealRiver() {
+    public ResponseEntity<Map<String, Object>> dealRiver() {
         try {
             Optional<GameStatus> gameStatus = pokerGameService.dealRiver();
+            Map<String, Object> response = new HashMap<>();
             if (gameStatus.isPresent()) {
-                return ResponseEntity.ok(gameStatus.get());
+                response.put("status", "success");
+                response.put("gameStatus", gameStatus.get());
+                return ResponseEntity.ok(response);
             } else {
-                return ResponseEntity.badRequest().body("Cannot deal river at this phase.");
+                response.put("status", "error");
+                response.put("message", "Cannot deal river at this phase.");
+                return ResponseEntity.badRequest().body(response);
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error during dealing the river.");
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "error");
+            response.put("message", "Error during dealing the river.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
@@ -125,11 +132,17 @@ public class PokerGameController {
             @ApiResponse(responseCode = "200", description = "Player folded successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid player ID or game state")
     })
-    public ResponseEntity<String> playerFold(
+    public ResponseEntity<Map<String, String>> playerFold(
             @RequestParam @Parameter(description = "ID of the player folding") String playerId) {
         boolean success = pokerGameService.playerFold(playerId);
-        return success ? ResponseEntity.ok("Player folded successfully.")
-                : ResponseEntity.badRequest().body("Folding failed.");
+        Map<String, String> response = new HashMap<>();
+        if (success) {
+            response.put("message", "Player folded successfully.");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("error", "Folding failed.");
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 
     @PostMapping("/register")
@@ -170,10 +183,16 @@ public class PokerGameController {
             @ApiResponse(responseCode = "200", description = "Game ended successfully", content = @Content(schema = @Schema(implementation = String.class), examples = @ExampleObject(value = "Game ended. Winner is: Player123"))),
             @ApiResponse(responseCode = "400", description = "Failed to end game or no winner")
     })
-    public ResponseEntity<String> endGame() {
+    public ResponseEntity<Map<String, String>> endGame() {
         String winnerId = pokerGameService.endGame();
-        return winnerId != null ? ResponseEntity.ok("Game ended. Winner is: " + winnerId)
-                : ResponseEntity.badRequest().body("Game end failed or no winner.");
+        Map<String, String> response = new HashMap<>();
+        if (winnerId != null) {
+            response.put("message", "Game ended. Winner is: " + winnerId);
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("error", "Game end failed or no winner.");
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 
     @PostMapping("/new-match")
@@ -197,14 +216,17 @@ public class PokerGameController {
             @ApiResponse(responseCode = "200", description = "Game reset successfully"),
             @ApiResponse(responseCode = "500", description = "Failed to reset the game")
     })
-    public ResponseEntity<String> resetGame(
+    public ResponseEntity<Map<String, String>> resetGame(
             @RequestBody @Parameter(description = "Reset options") Map<String, Boolean> request) {
         boolean keepPlayers = request.getOrDefault("keepPlayers", false);
         boolean resetResult = pokerGameService.resetGame(keepPlayers);
+        Map<String, String> response = new HashMap<>();
         if (resetResult) {
-            return ResponseEntity.ok("Game has been reset successfully.");
+            response.put("message", "Game has been reset successfully.");
+            return ResponseEntity.ok(response);
         } else {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to reset the game.");
+            response.put("error", "Failed to reset the game.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
@@ -224,4 +246,46 @@ public class PokerGameController {
         response.put("message", success ? "Raise successful." : "Raise failed.");
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/check")
+    @Operation(summary = "Check", description = "Allows a player to check if no bet has been placed")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Player checked successfully"),
+            @ApiResponse(responseCode = "400", description = "Check failed due to invalid game state or bet")
+    })
+    public ResponseEntity<Map<String, String>> playerCheck(
+            @RequestParam @Parameter(description = "ID of the player checking") String playerId) {
+        boolean success = pokerGameService.playerCheck(playerId);
+        Map<String, String> response = new HashMap<>();
+        if (success) {
+            response.put("message", "Player checked successfully.");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("error", "Check failed. Check the current bet or game state.");
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @PostMapping("/change-name")
+    @Operation(summary = "Change player name", description = "Change a player name based on ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Name successfully changed"),
+            @ApiResponse(responseCode = "400", description = "Invalid player ID or name")
+    })
+    public ResponseEntity<Map<String, String>> changePlayerName(
+            @RequestBody @Parameter(description = "Player ID and new name", example = "{ \"playerId\": \"12345\", \"newName\": \"NewName\" }") Map<String, String> payload) {
+        String playerId = payload.get("playerId");
+        String newName = payload.get("newName");
+
+        boolean success = pokerGameService.changePlayerName(playerId, newName);
+        Map<String, String> response = new HashMap<>();
+        if (success) {
+            response.put("message", "Játékos neve sikeresen megváltoztatva.");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("error", "Nem sikerült megváltoztatni a játékos nevét.");
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
 }

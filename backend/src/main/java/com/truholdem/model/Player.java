@@ -29,6 +29,10 @@ public class Player {
         this.betAmount = 0;
     }
 
+    public Player() {
+
+    }
+
     // Tét emelése
     public void placeBet(int amount) {
         if (amount <= 0) {

@@ -19,7 +19,7 @@ public class Deck {
                 cards.add(new Card(suit, value));
             }
         }
-        Collections.shuffle(cards);
+        shuffle(); // Keverés reset után
     }
 
     // Egy kártya húzása a pakliból

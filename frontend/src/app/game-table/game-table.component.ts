@@ -4,6 +4,8 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Game } from '../model/game';
 import { Player } from '../model/player';
 import { Card } from '../model/card';
+import { PlayerService } from '../services/player.service';
+import { PlayerInfo } from '../register-players/register-players.component';
 
 @Component({
   selector: 'app-game-table',
@@ -21,13 +23,14 @@ export class GameTableComponent implements OnInit {
   playerActionTaken: boolean = false;
   currentPot = 0;
   playerActions: Map<string, boolean> = new Map();
-
+  players: PlayerInfo[] = [];
   @ViewChild(RaiseInputComponent) raiseInputComponent!: RaiseInputComponent;
   @ViewChild('raiseModal') raiseModal!: ElementRef;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private playerService: PlayerService) { }
 
   ngOnInit(): void {
+    this.players = this.playerService.getPlayers();
     this.getGameStatus();
   }
 
@@ -419,5 +422,32 @@ export class GameTableComponent implements OnInit {
         console.error('Error during player bet:', error);
       }
     });
+  }
+
+  check(): void {
+    this.nonBotPlayer = this.game.players.find(player => !player.name?.startsWith('Bot'));
+    if (this.nonBotPlayer) {
+      const params = new HttpParams().set('playerId', this.nonBotPlayer.id);
+
+      this.http.post('http://localhost:8080/api/poker/check', null, { params: params, responseType: 'text' }).subscribe({
+        next: (response) => {
+          console.log("Check successful", response);
+          this.playerActionTaken = true;
+          this.getGameStatus(); // Update the game status after the check action
+          this.progressToNextPhase(); // Only proceed to next phase if the check was successful
+        },
+        error: (error: HttpErrorResponse) => {
+          console.error('Error during check:', error.message);
+          if (error.status === 400) {
+            alert('A check csak akkor lehetséges, ha az aktuális tét megegyezik az Ön által már betett összeggel. Ha más játékos emelt, akkor Önnek is emelnie vagy dobnia kell.');
+            // DO NOT call progressToNextPhase on error
+          } else {
+            alert('Váratlan hiba történt a check művelet során.');
+          }
+        }
+      });
+    } else {
+      console.error('No non-bot player found');
+    }
   }
 }
