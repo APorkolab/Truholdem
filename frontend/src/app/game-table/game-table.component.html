@@ -32,10 +32,12 @@
 			(actionTaken)="handleRaiseAction()"></app-raise-input>
 
 		<div>Pots: {{ currentPot || 0 }}</div>
-		<button *ngIf="game?.phase === 'PRE_FLOP' && isFolded()" (click)="dealFlop()">Deal Flop</button>
-		<button *ngIf="game?.phase === 'FLOP' && isFolded()" (click)="dealTurn()">Deal Turn</button>
-		<button *ngIf="game?.phase === 'TURN' && isFolded()" (click)="dealRiver()">Deal River</button>
-		<button *ngIf="game?.phase === 'RIVER'" (click)="endGame(); openModal()">End Game</button>
+		<div>
+			<button *ngIf="!isFolded() && game?.phase === 'PRE_FLOP'" (click)="dealFlop()">Deal Flop</button>
+			<button *ngIf="!isFolded() && game?.phase === 'FLOP'" (click)="dealTurn()">Deal Turn</button>
+			<button *ngIf="!isFolded() && game?.phase === 'TURN'" (click)="dealRiver()">Deal River</button>
+			<button *ngIf="!isFolded() && game?.phase === 'RIVER'" (click)="endGame(); openModal()">End Game</button>
+		</div>
 	</div>
 
 	<div class="modal" *ngIf="showModal">

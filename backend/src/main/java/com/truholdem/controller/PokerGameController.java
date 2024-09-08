@@ -174,6 +174,7 @@ public class PokerGameController {
     })
     public ResponseEntity<GameStatus> getGameStatus() {
         GameStatus status = pokerGameService.getGameStatus();
+        System.out.println("Returning game status: " + status);
         return status != null ? ResponseEntity.ok(status) : ResponseEntity.notFound().build();
     }
 

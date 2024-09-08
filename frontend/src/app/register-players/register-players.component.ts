@@ -89,26 +89,40 @@ export class RegisterPlayersComponent {
   }
 
   changePlayerNames(serverPlayers: any[]): void {
-    const changeNameRequests = serverPlayers.map((serverPlayer, index) => {
-      const clientPlayer = this.players[index];
-      return this.http.post('http://localhost:8080/api/poker/change-name', {
-        playerId: serverPlayer.id,
-        newName: clientPlayer.name
-      });
-    });
-
-    forkJoin(changeNameRequests).subscribe({
-      next: () => {
-        // Játékosok mentése a PlayerService-be
+    const changePlayerNameRecursively = (index: number) => {
+      if (index >= serverPlayers.length) {
+        // Minden névváltoztatás sikeres volt, most mentjük a játékosokat és navigálunk
         this.playerService.setPlayers(this.players);
-        // Navigáció csak akkor, ha sikeres a regisztráció és névváltoztatás
         this.router.navigate(['/start']);
-      },
-      error: (error: HttpErrorResponse) => {
-        console.error('Error changing player names:', error.message);
-        alert('An error occurred while changing player names. Please try again later.');
+        return;
       }
-    });
+
+      const serverPlayer = serverPlayers[index];
+      const clientPlayer = this.players[index];
+
+      // Csak akkor küldjük el a változtatást, ha a nevek eltérnek
+      if (serverPlayer.name !== clientPlayer.name) {
+        this.http.post('http://localhost:8080/api/poker/change-name', {
+          playerId: serverPlayer.id,
+          newName: clientPlayer.name
+        }).subscribe({
+          next: () => {
+            // Következő játékos nevének módosítása
+            changePlayerNameRecursively(index + 1);
+          },
+          error: (error: HttpErrorResponse) => {
+            console.error('Error changing player name for', clientPlayer.name, ':', error.message);
+            alert('An error occurred while changing player names. Please try again later.');
+          }
+        });
+      } else {
+        // Ha a név nem változott, folytatjuk a következő játékossal
+        changePlayerNameRecursively(index + 1);
+      }
+    };
+
+    // Kezdjük az első játékossal
+    changePlayerNameRecursively(0);
   }
 
   // Név generálása (alapértelmezett név játékosnak vagy botnak)

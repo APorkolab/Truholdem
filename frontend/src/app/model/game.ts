@@ -5,5 +5,5 @@ export interface Game {
 	currentPot: number;
 	players: Player[];
 	communityCards: Card[];
-	phase: 'PRE_FLOP' | 'FLOP' | 'TURN' | 'RIVER';
+	phase: 'PRE_FLOP' | 'FLOP' | 'TURN' | 'RIVER' | 'SHOWDOWN';
 }

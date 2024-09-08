@@ -7,7 +7,7 @@ public class PlayerInfo extends Player {
 
     // Konstruktor és getterek/setterek
     public PlayerInfo(String name, int startingChips, boolean isBot) {
-        super();
+        super(name,startingChips,isBot);
         this.name = name;
         this.startingChips = startingChips;
         this.isBot = isBot;

@@ -43,11 +43,15 @@ export class GameTableComponent implements OnInit {
   getGameStatus(): void {
     this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
       next: (data: Game) => {
-        this.game = data;
-        this.setCurrentNonBotPlayerId();
-        this.sortPlayers();
-        this.playerActionTaken = this.isFolded() || this.playerActionTaken;
-        this.updateCurrentPot();
+        if (data && data.players) {
+          this.game = data;
+          this.setCurrentNonBotPlayerId();
+          this.sortPlayers();
+          this.updateCurrentPot();
+          this.checkAllPlayersActionTaken();
+        } else {
+          console.error('Received game status does not contain players');
+        }
       },
       error: (error: HttpErrorResponse) => {
         console.error('Hiba a játék állapotának lekérésekor:', error.message);
@@ -61,50 +65,21 @@ export class GameTableComponent implements OnInit {
   }
 
   sortPlayers(): void {
-    const nonBotPlayers = this.game.players.filter(player => !player.name?.startsWith('Bot'));
-    const botPlayers = this.game.players.filter(player => player.name?.startsWith('Bot'));
-    this.game.players = [...botPlayers, ...nonBotPlayers];
-    this.nonBotPlayer = nonBotPlayers.length ? nonBotPlayers[0] : undefined;
-  }
-
-  getCardImage(card: Card): string {
-    if (!card) return '../../assets/cards/back.png';
-
-    let rank = card.value.toLowerCase();
-    switch (rank) {
-      case 'two': rank = '2'; break;
-      case 'three': rank = '3'; break;
-      case 'four': rank = '4'; break;
-      case 'five': rank = '5'; break;
-      case 'six': rank = '6'; break;
-      case 'seven': rank = '7'; break;
-      case 'eight': rank = '8'; break;
-      case 'nine': rank = '9'; break;
-      case 'ten': rank = '10'; break;
-      case 'jack': rank = 'jack'; break;
-      case 'queen': rank = 'queen'; break;
-      case 'king': rank = 'king'; break;
-      case 'ace': rank = 'ace'; break;
-      default: break;
+    if (this.game && this.game.players) {
+      const nonBotPlayers = this.game.players.filter(player => !player.name?.startsWith('Bot'));
+      const botPlayers = this.game.players.filter(player => player.name?.startsWith('Bot'));
+      this.game.players = [...botPlayers, ...nonBotPlayers];
+      this.nonBotPlayer = nonBotPlayers.length ? nonBotPlayers[0] : undefined;
+    } else {
+      console.error('Players list is undefined or null');
     }
-
-    const suit = card.suit.toLowerCase();
-
-    return `../../assets/cards/${rank}_of_${suit}.png`;
-  }
-
-  startGame(): void {
-    this.http.post('http://localhost:8080/api/poker/start', []).subscribe({
-      next: () => this.getGameStatus(),
-      error: (error) => console.error('Error starting game:', error)
-    });
   }
 
   dealFlop() {
-    this.http.get('http://localhost:8080/api/poker/flop').subscribe(
-      (data: any) => {
+    this.http.get<Game>('http://localhost:8080/api/poker/flop').subscribe(
+      (data: Game) => {
         this.updateGameStatus(data);
-        this.calculateCurrentPot();
+        console.log('Community cards after flop:', this.game.communityCards);
       },
       (error: HttpErrorResponse) => {
         console.error('Error during dealing the flop:', error);
@@ -115,12 +90,6 @@ export class GameTableComponent implements OnInit {
         }
       }
     );
-  }
-
-  // Ez a metódus frissíti a játék állapotát
-  updateGameStatus(data: any): void {
-    this.game = data;
-    // Esetleg más állapotfrissítések
   }
 
   dealTurn() {
@@ -145,6 +114,9 @@ export class GameTableComponent implements OnInit {
       next: (data: Game) => {
         this.updateGameStatus(data);
         this.calculateCurrentPot();
+        if (this.checkAllPlayersActionTaken()) {
+          this.endGame();
+        }
       },
       error: (error: HttpErrorResponse) => {
         console.error('Error during dealing the river:', error.message);
@@ -159,15 +131,15 @@ export class GameTableComponent implements OnInit {
 
   endGame(): void {
     this.http.get('http://localhost:8080/api/poker/end', { responseType: 'text' }).subscribe(
-      (response) => {
-        this.gameResultMessage = response;
+      (response: string) => {
+        this.gameResultMessage = `The winner is: ${response}`;
         this.showModal = true;
-        this.updateCurrentPot(); // Update pot on end game
+        this.updateCurrentPot();
       },
       (error) => {
         this.gameResultMessage = 'Game end failed or no winner.';
         this.showModal = true;
-        this.updateCurrentPot(); // Update pot on end game error
+        this.updateCurrentPot();
       }
     );
   }
@@ -181,8 +153,8 @@ export class GameTableComponent implements OnInit {
         next: (response) => {
           console.log("Fold successful", response);
           this.playerActionTaken = true;
-          this.getGameStatus(); // Update game status after fold
-          this.progressToNextPhase(); // Manually progress to next phase
+          this.getGameStatus();
+          this.progressToNextPhase();
         },
         error: (error) => console.error('Error during fold:', error)
       });
@@ -191,7 +163,45 @@ export class GameTableComponent implements OnInit {
     }
   }
 
-  private progressToNextPhase(): void {
+  progressToNextPhase(): void {
+    switch (this.game.phase) {
+      case 'PRE_FLOP':
+        this.dealFlop();
+        break;
+      case 'FLOP':
+        this.dealTurn();
+        break;
+      case 'TURN':
+        this.dealRiver();
+        break;
+      case 'RIVER':
+        if (this.checkAllPlayersActionTaken()) {
+          this.endGame();
+        } else {
+          console.log('Waiting for players to finish their actions in the River phase.');
+          alert('Final betting round after the River.');
+        }
+        break;
+      case 'SHOWDOWN':
+        this.endGame();
+        break;
+    }
+  }
+
+  checkAllPlayersActionTaken(): boolean {
+    const allActionsTaken = this.game.players.every(player => this.playerActions.get(player.id) === true);
+    console.log('All players actions taken: ', allActionsTaken);
+    return allActionsTaken;
+  }
+
+  updatePlayerAction(playerId: string): void {
+    this.playerActions.set(playerId, true);
+    if (this.checkAllPlayersActionTaken()) {
+      this.proceedToNextPhase();
+    }
+  }
+
+  proceedToNextPhase(): void {
     switch (this.game.phase) {
       case 'PRE_FLOP':
         this.dealFlop();
@@ -208,63 +218,35 @@ export class GameTableComponent implements OnInit {
     }
   }
 
-  isFolded(): boolean {
-    return this.nonBotPlayer ? this.nonBotPlayer.folded : false;
-  }
-
-  showRaiseInput(): void {
-    this.raiseInputComponent.showRaiseInput();
-  }
-
-  handleRaiseAction(): void {
-    this.playerActionTaken = true;
-    this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
-      next: (data) => {
-        this.game = data;
-        this.setCurrentNonBotPlayerId();
-        this.sortPlayers();
-        this.updateCurrentPot(); // Update pot on raise action
+  playerRaise(playerId: string, amount: number): void {
+    const payload = { playerId, amount };
+    this.http.post('http://localhost:8080/api/poker/raise', payload).subscribe({
+      next: () => {
+        this.updatePlayerAction(playerId);
+        this.getGameStatus();
+        this.updateCurrentPot();
       },
       error: (error) => {
-        console.error('Error fetching game status:', error);
+        console.error('Error during player raise:', error);
       }
     });
   }
 
-  handleCheckAction(): void {
-    this.playerActionTaken = true;
-    this.updateCurrentPot(); // Update pot on check action
-  }
-
-  allIn(): void {
-    this.nonBotPlayer = this.game.players.find(player => !player.name?.startsWith('Bot'));
-    if (this.nonBotPlayer) {
-      const params = new HttpParams().set('playerId', this.nonBotPlayer.id);
-      this.http.post('http://localhost:8080/api/poker/bet', null, { params: params, responseType: 'text' }).subscribe({
-        next: (response) => {
-          console.log("All-in successful", response);
-          this.playerActionTaken = true;
-          this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
-            next: (data) => {
-              this.game = data;
-              this.setCurrentNonBotPlayerId();
-              this.sortPlayers();
-              this.updateCurrentPot(); // Update pot on all-in action
-            },
-            error: (error) => {
-              console.error('Error fetching game status:', error);
-            }
-          });
-        },
-        error: (error) => console.error('Error during all-in:', error)
-      });
-    } else {
-      console.error('No non-bot player found');
-    }
+  playerBet(playerId: string, amount: number): void {
+    const payload = { playerId, amount };
+    this.http.post('http://localhost:8080/api/poker/bet', payload).subscribe({
+      next: () => {
+        this.updatePlayerAction(playerId);
+        this.getGameStatus();
+        this.updateCurrentPot();
+      },
+      error: (error) => {
+        console.error('Error during player bet:', error);
+      }
+    });
   }
 
   calculateCurrentPot(): number {
-    // Ellenőrizd, hogy minden játékos betAmount értéke helyesen van-e inicializálva és nem undefined
     return this.game.players.reduce((total, player) => total + (player.betAmount || 0), 0);
   }
 
@@ -272,12 +254,50 @@ export class GameTableComponent implements OnInit {
     this.currentPot = this.calculateCurrentPot();
   }
 
-  closeModal(): void {
-    this.showModal = false;
+  check(): void {
+    this.nonBotPlayer = this.game.players.find(player => !player.name?.startsWith('Bot'));
+    if (this.nonBotPlayer) {
+      const currentBet = Math.max(...this.game.players.map(player => player.betAmount || 0));
+
+      if (this.nonBotPlayer.betAmount === currentBet) {
+        const params = new HttpParams().set('playerId', this.nonBotPlayer.id);
+        this.http.post('http://localhost:8080/api/poker/check', null, { params: params, responseType: 'text' }).subscribe({
+          next: (response) => {
+            console.log("Check successful", response);
+            this.playerActionTaken = true;
+            this.getGameStatus();
+            this.progressToNextPhase();
+          },
+          error: (error: HttpErrorResponse) => {
+            console.error('Error during check:', error.message);
+          }
+        });
+      } else {
+        alert('Nem checkelhet, ha a tét magasabb a jelenlegi betétnél.');
+      }
+    } else {
+      console.error('No non-bot player found');
+    }
   }
 
-  openModal(): void {
-    this.showModal = true;
+  allIn(): void {
+    this.nonBotPlayer = this.game.players.find(player => !player.name?.startsWith('Bot'));
+    if (this.nonBotPlayer) {
+      const params = new HttpParams().set('playerId', this.nonBotPlayer.id);
+      this.http.post('http://localhost:8080/api/poker/bet', { playerId: this.nonBotPlayer.id, amount: this.nonBotPlayer.chips }, { responseType: 'text' }).subscribe({
+        next: (response) => {
+          console.log("All-in successful", response);
+          this.playerActionTaken = true;
+          this.getGameStatus();
+          this.updateCurrentPot();
+        },
+        error: (error: HttpErrorResponse) => {
+          console.error('Error during all-in:', error.message);
+        }
+      });
+    } else {
+      console.error('No non-bot player found');
+    }
   }
 
   resetGame(): void {
@@ -324,7 +344,7 @@ export class GameTableComponent implements OnInit {
       next: (response) => {
         if (response && response.players && response.players.length > 0) {
           this.game = response;
-          this.playerActionTaken = false; // Reset player action flag
+          this.playerActionTaken = false;
           this.closeModal();
           this.currentPot = 0;
         } else {
@@ -338,116 +358,90 @@ export class GameTableComponent implements OnInit {
     });
   }
 
-  automateBotActions(): void {
-    this.game.players.forEach(player => {
-      if (player.name?.startsWith('Bot') && !this.playerActions.get(player.id)) {
-        const currentBet = this.game.players.reduce((max, player) => Math.max(max, player.betAmount || 0), 0);
-        const raiseAmount = currentBet + Math.floor(Math.random() * 100);
-        if (player.chips >= raiseAmount) {
-          this.playerRaise(player.id, raiseAmount);
-        } else if (player.chips >= currentBet) {
-          this.playerBet(player.id, currentBet);
-        } else {
-          this.playerFold(player.id);
-        }
-      }
-    });
+  openModal(): void {
+    this.showModal = true;
   }
 
-  playerRaise(playerId: string, amount: number): void {
-    const payload = { playerId, amount };
-    this.http.post('http://localhost:8080/api/poker/raise', payload).subscribe({
-      next: () => {
-        this.updatePlayerAction(playerId);
-        this.getGameStatus();
-        this.updateCurrentPot();
-      },
-      error: (error) => {
-        console.error('Error during player raise:', error);
-      }
-    });
+  closeModal(): void {
+    this.showModal = false;
   }
 
-  checkAllPlayersActionTaken(): boolean {
-    return Array.from(this.playerActions.values()).every(actionTaken => actionTaken);
-  }
+  getCardImage(card: Card): string {
+    if (!card) return '../../assets/cards/back.png';
 
-  updatePlayerAction(playerId: string): void {
-    this.playerActions.set(playerId, true);
-    if (this.checkAllPlayersActionTaken()) {
-      this.proceedToNextPhase();
+    let rank = card.value.toLowerCase();
+    switch (rank) {
+      case 'two': rank = '2'; break;
+      case 'three': rank = '3'; break;
+      case 'four': rank = '4'; break;
+      case 'five': rank = '5'; break;
+      case 'six': rank = '6'; break;
+      case 'seven': rank = '7'; break;
+      case 'eight': rank = '8'; break;
+      case 'nine': rank = '9'; break;
+      case 'ten': rank = '10'; break;
+      case 'jack': rank = 'jack'; break;
+      case 'queen': rank = 'queen'; break;
+      case 'king': rank = 'king'; break;
+      case 'ace': rank = 'ace'; break;
+      default: break;
     }
+
+    const suit = card.suit.toLowerCase();
+
+    return `../../assets/cards/${rank}_of_${suit}.png`;
   }
 
-  proceedToNextPhase(): void {
-    switch (this.game.phase) {
-      case 'PRE_FLOP':
-        this.dealFlop();
-        break;
-      case 'FLOP':
-        this.dealTurn();
-        break;
-      case 'TURN':
-        this.dealRiver();
-        break;
-      case 'RIVER':
+  updateGameStatus(data: Game): void {
+    console.log('Received game status:', data);
+
+    if (!data || !data.players || !data.phase) {
+      console.error('Invalid game status data received.');
+      return;
+    }
+
+    this.game = data;
+
+    if (data.phase === 'PRE_FLOP') {
+      console.log('Game is in PRE_FLOP phase, no community cards expected');
+      this.game.communityCards = [];
+    } else if (data.communityCards && data.communityCards.length > 0) {
+      console.log('Community cards received:', data.communityCards);
+      this.game.communityCards = data.communityCards;
+    }
+
+    this.setCurrentNonBotPlayerId();
+    this.sortPlayers();
+    this.updateCurrentPot();
+
+    if (data.phase === 'SHOWDOWN') {
+      console.log('Showdown phase reached, ending the game.');
+      this.endGame();
+    } else if (data.phase === 'RIVER') {
+      if (this.checkAllPlayersActionTaken()) {
+        console.log('All players acted in River phase. Ending game...');
         this.endGame();
-        break;
+      }
     }
   }
 
-  playerFold(playerId: string): void {
-    const payload = { playerId };
-    this.http.post('http://localhost:8080/api/poker/fold', payload).subscribe({
-      next: () => {
-        this.updatePlayerAction(playerId);
-        this.getGameStatus();
-        this.updateCurrentPot();
+  isFolded(): boolean {
+    return this.nonBotPlayer ? this.nonBotPlayer.folded : false;
+  }
+
+  handleRaiseAction(): void {
+    this.playerActionTaken = true;
+    this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
+      next: (data) => {
+        this.game = data;
+        this.setCurrentNonBotPlayerId();
+        this.sortPlayers();
+        this.updateCurrentPot(); // Update pot on raise action
       },
       error: (error) => {
-        console.error('Error during player fold:', error);
+        console.error('Error fetching game status:', error);
       }
     });
   }
 
-  playerBet(playerId: string, amount: number): void {
-    const payload = { playerId, amount };
-    this.http.post('http://localhost:8080/api/poker/bet', payload).subscribe({
-      next: () => {
-        this.updatePlayerAction(playerId);
-        this.getGameStatus();
-        this.updateCurrentPot();
-      },
-      error: (error) => {
-        console.error('Error during player bet:', error);
-      }
-    });
-  }
-
-  check(): void {
-    this.nonBotPlayer = this.game.players.find(player => !player.name?.startsWith('Bot'));
-    if (this.nonBotPlayer) {
-      const params = new HttpParams().set('playerId', this.nonBotPlayer.id);
-
-      this.http.post('http://localhost:8080/api/poker/check', null, { params: params, responseType: 'text' }).subscribe({
-        next: (response) => {
-          console.log("Check successful", response);
-          this.playerActionTaken = true;
-          this.getGameStatus(); // Update the game status after the check action
-          this.progressToNextPhase(); // Only proceed to next phase if the check was successful
-        },
-        error: (error: HttpErrorResponse) => {
-          console.error('Error during check:', error.message);
-          if (error.status === 400) {
-            alert('A check csak akkor lehetséges, ha az aktuális tét megegyezik az Ön által már betett összeggel. Ha más játékos emelt, akkor Önnek is emelnie vagy dobnia kell.');
-            // DO NOT call progressToNextPhase on error
-          } else {
-            alert('Váratlan hiba történt a check művelet során.');
-          }
-        }
-      });
-    } else {
-      console.error('No non-bot player found');
-    }
-  }
 }

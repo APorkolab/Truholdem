@@ -4,82 +4,97 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.stream.Collectors;
 
 public class GameStatus {
     private List<Card> communityCards = new ArrayList<>();
     private List<Player> players = new ArrayList<>();
-    private GamePhase phase = GamePhase.PRE_FLOP; // Kezdő állapot
+    private GamePhase phase = GamePhase.PRE_FLOP;
     private int currentPot = 0;
     private String message;
 
     private int currentBet;
-
-    public int getCurrentBet() {
-        return currentBet;
-    }
-
-    public void setCurrentBet(int currentBet) {
-        this.currentBet = currentBet;
-    }
+    private Map<String, Boolean> playerActions = new HashMap<>();
 
     // Játékfázisok enumja
     public enum GamePhase {
         PRE_FLOP, FLOP, TURN, RIVER, SHOWDOWN;
     }
 
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    // Játékos hozzáadása
     public void addPlayer(PlayerInfo playerInfo) {
-        Player player = new Player(playerInfo.getName(), playerInfo.getStartingChips(), playerInfo.isBot());
-        this.players.add(player);
+        if (players.stream().noneMatch(p -> p.getName().equals(playerInfo.getName()))) {
+            Player player = new Player(playerInfo.getName(), playerInfo.getStartingChips(), playerInfo.isBot());
+            this.players.add(player);
+            this.playerActions.put(player.getId(), false);
+        } else {
+            System.out.println("Player with this name already exists.");
+        }
     }
 
-    // Játékos eltávolítása
     public void removePlayer(Player player) {
         players.remove(player);
     }
 
-    // Közösségi kártya hozzáadása
     public void addCommunityCard(Card card) {
         if (card != null) {
-            communityCards.add(card);
+            this.communityCards.add(card);
         }
     }
 
-    // Fázis frissítése biztonságos módon
     public void nextPhase() {
+        if (!allPlayersActed() || !areAllBetsEqual()) {
+            System.out.println("Cannot proceed to next phase yet.");
+            return;
+        }
+
         if (phase.ordinal() < GamePhase.values().length - 1) {
             phase = GamePhase.values()[phase.ordinal() + 1];
         } else {
             phase = GamePhase.SHOWDOWN;
         }
+
+        resetPlayerActions();
+        System.out.println("Phase advanced to: " + phase);
     }
 
-    // ToString metódus a játék állapotának szöveges reprezentációjához
-    @Override
-    public String toString() {
-        return "GameStatus{" +
-                "communityCards=" + communityCards +
-                ", players=" + players +
-                ", phase=" + phase +
-                ", currentPot=" + currentPot +
-                '}';
+    public void resetPlayerActions() {
+        players.forEach(player -> playerActions.put(player.getId(), false));
     }
 
-    // Getterek és Setterek
+    public boolean allPlayersActed() {
+        return players.stream()
+                .filter(player -> !player.isFolded())
+                .allMatch(player -> playerActions.get(player.getId()));
+    }
+
+    public List<Player> getPlayersWhoHaveNotActed() {
+        return players.stream()
+                .filter(player -> !player.isFolded() && !Boolean.TRUE.equals(playerActions.get(player.getId())))
+                .collect(Collectors.toList());
+    }
+
+    public boolean areAllBetsEqual() {
+        int activeBet = players.stream()
+                .filter(player -> !player.isFolded())
+                .mapToInt(Player::getBetAmount)
+                .min().orElse(0);
+
+        return players.stream()
+                .filter(player -> !player.isFolded())
+                .allMatch(player -> player.getBetAmount() == activeBet);
+    }
+
+    // Getters and Setters
     public List<Card> getCommunityCards() {
-        return new ArrayList<>(communityCards);
+        return communityCards;
     }
 
     public List<Player> getPlayers() {
-        return new ArrayList<>(players);
+        return players;
+    }
+
+    public void setPlayers(List<Player> players) {
+        this.players = players;
     }
 
     public GamePhase getPhase() {
@@ -90,47 +105,27 @@ public class GameStatus {
         return currentPot;
     }
 
-    public void setPhase(GamePhase phase) {
-        this.phase = phase;
-    }
-
     public void setCurrentPot(int currentPot) {
         this.currentPot = currentPot;
     }
 
-    public void setCommunityCards(List<Card> communityCards) {
-        this.communityCards = communityCards;
+    public void setPhase(GamePhase phase) {
+        this.phase = phase;
     }
 
-    public void addCardToCommunity(Card card) {
-        List<Card> currentCards = this.getCommunityCards();
-        currentCards.add(card);
-        this.setCommunityCards(currentCards);
+    public int getCurrentBet() {
+        return currentBet;
     }
 
-    public void clearCommunityCards() {
-        communityCards.clear();
-    }
-
-    public void setPlayers(List<Player> players) {
-        this.players = players;
-    }
-
-    public int getPot() {
-        return currentPot;
-    }
-
-    private Map<String, Boolean> playerActions = new HashMap<>();
-
-    public void setPlayerActions(Map<String, Boolean> playerActions) {
-        this.playerActions = playerActions;
+    public void setCurrentBet(int currentBet) {
+        this.currentBet = currentBet;
     }
 
     public Map<String, Boolean> getPlayerActions() {
         return playerActions;
     }
 
-    public boolean areAllPlayersActed() {
-        return playerActions.values().stream().allMatch(acted -> acted);
+    public void clearCommunityCards() {
+        this.communityCards.clear();
     }
 }
