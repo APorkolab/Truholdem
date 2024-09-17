@@ -17,6 +17,7 @@ public class PokerGameService {
     private int bigBlindAmount = 20;
     private Player smallBlindPlayer;
     private Player bigBlindPlayer;
+    private int currentPlayerIndex;
 
     public PokerGameService() {
         this.deck = new Deck();
@@ -69,11 +70,11 @@ public class PokerGameService {
         return true; // Reset successfully
     }
 
-
     public Optional<GameStatus> dealFlop() {
         if (gameStarted && gameStatus.getPhase() == GamePhase.PRE_FLOP) {
             performFlop();
             gameStatus.setPhase(GamePhase.FLOP);
+            performBotActions();
             gameStatus.resetPlayerActions();
             return Optional.of(gameStatus);
         }
@@ -84,6 +85,7 @@ public class PokerGameService {
         if (gameStarted && gameStatus.getPhase() == GamePhase.FLOP) {
             performTurn();
             gameStatus.setPhase(GamePhase.TURN);
+            performBotActions();
             gameStatus.resetPlayerActions();
             return Optional.of(gameStatus);
         }
@@ -92,13 +94,13 @@ public class PokerGameService {
 
     public Optional<GameStatus> dealRiver() {
         if (gameStarted && gameStatus.getPhase() == GamePhase.TURN) {
-            performRiver();
             gameStatus.setPhase(GamePhase.RIVER);
+            performRiver();
+            performBotActions();
             gameStatus.resetPlayerActions();
             if (gameStatus.areAllBetsEqual() && gameStatus.allPlayersActed()) {
                 // Proceed directly to end game if all actions are done
-                gameStatus.setPhase(GamePhase.SHOWDOWN);
-                endGame();  // Make sure to end the game after the river
+                endGame(); // Make sure to end the game after the river
             }
             return Optional.of(gameStatus);
         }
@@ -113,14 +115,7 @@ public class PokerGameService {
             player.setBetAmount(amount);
             gameStatus.setCurrentPot(gameStatus.getCurrentPot() + raiseAmount);
             gameStatus.getPlayerActions().put(playerId, true);
-
-            // Ha minden tét egyenlő és mindenki cselekedett, lépj a következő fázisba
-            //if (gameStatus.areAllBetsEqual() && gameStatus.allPlayersActed()) {
-                if (gameStatus.getPhase() == GamePhase.RIVER) {
-                    gameStatus.setPhase(GamePhase.SHOWDOWN); // Utolsó tétkör után lépünk a Showdown-ba
-                }
-                proceedToNextPhase();
-            //}
+            checkAndProceedToNextPhase();
             return true;
         }
         return false;
@@ -135,10 +130,7 @@ public class PokerGameService {
             gameStatus.setCurrentPot(gameStatus.getCurrentPot() + raiseAmount);
             currentBet = amount;
             gameStatus.getPlayerActions().put(playerId, true);
-
-            if (gameStatus.areAllBetsEqual() && gameStatus.allPlayersActed()) {
-                proceedToNextPhase();
-            }
+            checkAndProceedToNextPhase();
             return true;
         }
         return false;
@@ -154,8 +146,8 @@ public class PokerGameService {
 
         if (gameStatus.getPlayers().stream().filter(p -> !p.isFolded()).count() == 1) {
             endGameEarly();
-        } else if (gameStatus.allPlayersActed()) {
-            proceedToNextPhase();
+        } else {
+            checkAndProceedToNextPhase();
         }
         return true;
     }
@@ -164,9 +156,7 @@ public class PokerGameService {
         Player player = findPlayerById(playerId);
         if (player != null && player.getBetAmount() == currentBet) {
             gameStatus.getPlayerActions().put(playerId, true);
-            if (gameStatus.allPlayersActed()) {
-                proceedToNextPhase();
-            }
+            checkAndProceedToNextPhase();
             return true;
         }
         return false;
@@ -174,23 +164,30 @@ public class PokerGameService {
 
     public synchronized void proceedToNextPhase() {
         switch (gameStatus.getPhase()) {
+            case PRE_FLOP:
+                performFlop();
+                gameStatus.setPhase(GamePhase.FLOP);
+                break;
             case FLOP:
-                dealFlop();
+                performTurn();
+                gameStatus.setPhase(GamePhase.TURN);
                 break;
             case TURN:
-                dealTurn();
+                performRiver();
+                gameStatus.setPhase(GamePhase.RIVER);
                 break;
             case RIVER:
-                dealRiver();
-                break;
-            case SHOWDOWN:
-                endGame();  // Call endGame when it's time for showdown
-                break;
+                gameStatus.setPhase(GamePhase.SHOWDOWN);
+                endGame();
+                return;
             default:
-                break;
+                return;
         }
+        gameStatus.resetPlayerActions();
+        currentBet = 0;
+        gameStatus.setCurrentPlayerIndex(0);
+        performBotActions();
     }
-
 
     private Player findPlayerById(String playerId) {
         return gameStatus.getPlayers().stream()
@@ -217,10 +214,14 @@ public class PokerGameService {
     }
 
     private void dealInitialCards() {
-        gameStatus.getPlayers().forEach(player -> {
-            player.addCardToHand(deck.drawCard());
-            player.addCardToHand(deck.drawCard());
-        });
+        for (Player player : gameStatus.getPlayers()) {
+            if (player.getChips() > 0) {
+                player.clearHand();
+                player.addCardToHand(deck.drawCard());
+                player.addCardToHand(deck.drawCard());
+            }
+        }
+        System.out.println("Initial cards dealt to " + gameStatus.getPlayers().size() + " players.");
     }
 
     private void setBlinds() {
@@ -271,6 +272,7 @@ public class PokerGameService {
     }
 
     public String endGame() {
+        gameStatus.setPhase(GamePhase.SHOWDOWN);
         List<Player> activePlayers = gameStatus.getPlayers().stream()
                 .filter(player -> !player.isFolded())
                 .collect(Collectors.toList());
@@ -293,7 +295,8 @@ public class PokerGameService {
         List<Player> players = new ArrayList<>(gameStatus.getPlayers());
         players.removeIf(player -> player.getChips() <= 0);
 
-        if (players.isEmpty()) {
+        if (players.size() < 2) {
+            System.out.println("Not enough players with chips to start a new match.");
             return null;
         }
 
@@ -304,33 +307,31 @@ public class PokerGameService {
         setBlinds();
         gameStatus.setPhase(GamePhase.PRE_FLOP);
         gameStarted = true;
+        System.out.println("New match started with " + players.size() + " players.");
         return gameStatus;
     }
 
     private Player determineWinner(List<Player> players) {
-        // Ellenőrzés, ha csak egy aktív játékos maradt (nem dobott és van zsetonja)
         List<Player> activePlayers = players.stream()
                 .filter(player -> !player.isFolded() && player.getChips() > 0)
                 .collect(Collectors.toList());
 
         if (activePlayers.size() == 1) {
-            // Ha csak egy játékos maradt, ő nyeri a potot automatikusan
             Player winner = activePlayers.get(0);
             System.out.println("Only one player remaining, automatic winner: " + winner.getName());
             return winner;
         }
 
-        // Ha több játékos maradt, értékeljük a kezeket a HandEvaluator segítségével
         HandEvaluator evaluator = new HandEvaluator();
-        List<Card> communityCards = gameStatus.getCommunityCards(); // Közösségi lapok lekérése
+        List<Card> communityCards = gameStatus.getCommunityCards();
 
         return players.stream()
-                .filter(player -> !player.isFolded()) // Csak a játékban maradt játékosokat vizsgáljuk
+                .filter(player -> !player.isFolded())
                 .max(Comparator.comparingInt(player -> {
                     HandResult result = evaluator.evaluate(player.getHand(), communityCards);
-                    return result.getHandStrength(); // A játékos kéz erősségének összehasonlítása
+                    return result.getHandStrength();
                 }))
-                .orElse(null); // Legjobb kéz kiválasztása
+                .orElse(null);
     }
 
     public List<PlayerInfo> getDefaultPlayers() {
@@ -343,7 +344,7 @@ public class PokerGameService {
 
     public GameStatus registerPlayers(List<PlayerInfo> players) {
         if (players != null && !players.isEmpty()) {
-            players.forEach(player -> gameStatus.addPlayer(player));
+            players.forEach(info -> gameStatus.addPlayer(info));
         }
         return gameStatus;
     }
@@ -355,6 +356,75 @@ public class PokerGameService {
             return true;
         }
         return false;
+    }
+
+    public void performBotActions() {
+        List<Player> activePlayers = gameStatus.getPlayers().stream()
+                .filter(player -> !player.isFolded() && player.getChips() > 0)
+                .collect(Collectors.toList());
+
+        for (Player player : activePlayers) {
+            if (player.isBot() && !gameStatus.getPlayerActions().get(player.getId())) {
+                performBotAction(player.getId());
+                checkAndProceedToNextPhase();
+            }
+        }
+    }
+
+    public boolean performBotAction(String botId) {
+        Player bot = findPlayerById(botId);
+        if (bot == null || !bot.isBot() || gameStatus.getPlayerActions().get(botId)) {
+            return false;
+        }
+
+        int botChips = bot.getChips();
+        int botBet = bot.getBetAmount();
+
+        if (botChips <= 0 || (currentBet > 0 && botChips + botBet < currentBet)) {
+            return playerFold(botId);
+        }
+
+        Random random = new Random();
+        int action = random.nextInt(3); // 0: fold, 1: check/call, 2: raise
+
+        switch (action) {
+            case 0:
+                return playerFold(botId);
+            case 1:
+                if (currentBet > botBet) {
+                    return playerBet(botId, currentBet - botBet);
+                } else {
+                    return playerCheck(botId);
+                }
+            case 2:
+                int raiseAmount = Math.min(currentBet + random.nextInt(20) + 1, botChips + botBet);
+                return playerRaise(botId, raiseAmount);
+        }
+        return false;
+    }
+
+    private void checkAndProceedToNextPhase() {
+        if (gameStatus.allPlayersActed() && gameStatus.areAllBetsEqual()) {
+            proceedToNextPhase();
+        } else {
+            // Következő játékos kiválasztása
+            int nextPlayerIndex = (gameStatus.getCurrentPlayerIndex() + 1) % gameStatus.getPlayers().size();
+            gameStatus.setCurrentPlayerIndex(nextPlayerIndex);
+        }
+    }
+
+    private void resetPlayerActions() {
+        for (Player player : gameStatus.getPlayers()) {
+            gameStatus.getPlayerActions().put(player.getId(), false);
+        }
+    }
+
+    public void setCurrentPlayerIndex(int index) {
+        this.currentPlayerIndex = index;
+    }
+
+    public int getCurrentPlayerIndex() {
+        return this.currentPlayerIndex;
     }
 
 }

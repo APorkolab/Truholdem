@@ -12,6 +12,7 @@ public class GameStatus {
     private GamePhase phase = GamePhase.PRE_FLOP;
     private int currentPot = 0;
     private String message;
+    private int currentPlayerIndex;
 
     private int currentBet;
     private Map<String, Boolean> playerActions = new HashMap<>();
@@ -127,5 +128,13 @@ public class GameStatus {
 
     public void clearCommunityCards() {
         this.communityCards.clear();
+    }
+
+    public void setCurrentPlayerIndex(int index) {
+        this.currentPlayerIndex = index;
+    }
+
+    public int getCurrentPlayerIndex() {
+        return this.currentPlayerIndex;
     }
 }

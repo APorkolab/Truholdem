@@ -289,4 +289,25 @@ public class PokerGameController {
         }
     }
 
+    /**
+     * Performs an action for a specific bot in the poker game.
+     * 
+     * @param botId The ID of the bot for which the action is to be performed.
+     * @return ResponseEntity containing a success message if the action was
+     *         successful,
+     *         or an error message if the bot action could not be performed.
+     */
+    @PostMapping("/bot-action/{botId}")
+    public ResponseEntity<Map<String, String>> performBotAction(@PathVariable String botId) {
+        boolean success = pokerGameService.performBotAction(botId);
+        Map<String, String> response = new HashMap<>();
+        if (success) {
+            response.put("message", "Bot cselekvés sikeresen végrehajtva.");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("error", "Nem sikerült végrehajtani a bot cselekvést.");
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
 }
