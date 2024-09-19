@@ -189,7 +189,7 @@ public class PokerGameService {
         performBotActions();
     }
 
-    private Player findPlayerById(String playerId) {
+    public Player findPlayerById(String playerId) {
         return gameStatus.getPlayers().stream()
                 .filter(player -> player.getId().equals(playerId))
                 .findFirst()
@@ -373,15 +373,38 @@ public class PokerGameService {
 
     public boolean performBotAction(String botId) {
         Player bot = findPlayerById(botId);
-        if (bot == null || !bot.isBot() || gameStatus.getPlayerActions().get(botId)) {
+
+        // Ellenőrizzük, hogy a bot létezik-e
+        if (bot == null) {
+            System.out.println("Hiba: A megadott bot nem található.");
             return false;
+        }
+
+        // Ellenőrizzük, hogy a játékos bot-e
+        if (!bot.isBot()) {
+            System.out.println("Hiba: A megadott játékos nem bot.");
+            return false;
+        }
+
+        // Ellenőrizzük, hogy a bot már végrehajtott-e akciót ebben a körben
+        if (gameStatus.getPlayerActions().get(botId)) {
+            System.out.println("A bot már végrehajtotta az akcióját ebben a körben.");
+            return true;  // Nem dobunk hibát, csak visszatérünk, jelezve, hogy az akció már megtörtént
         }
 
         int botChips = bot.getChips();
         int botBet = bot.getBetAmount();
 
-        if (botChips <= 0 || (currentBet > 0 && botChips + botBet < currentBet)) {
-            return playerFold(botId);
+        // Ellenőrizzük, hogy van-e elég zsetonja
+        if (botChips <= 0) {
+            System.out.println("A botnak nincs elég zsetonja, automatikus bedobás.");
+            return playerFold(botId); // true-t ad vissza, ha a bot bedobja a lapot
+        }
+
+        // Ha a bot zsetonjai nem elegendők a jelenlegi tét megadásához
+        if (currentBet > 0 && botChips + botBet < currentBet) {
+            System.out.println("A bot bedobta a lapját, mert nem tudta megadni a tétet.");
+            return playerFold(botId); // true-t ad vissza a bedobás esetén
         }
 
         Random random = new Random();
@@ -389,19 +412,27 @@ public class PokerGameService {
 
         switch (action) {
             case 0:
-                return playerFold(botId);
+                System.out.println("A bot bedobta a lapját.");
+                return playerFold(botId); // true-t ad vissza a bedobás esetén
             case 1:
                 if (currentBet > botBet) {
-                    return playerBet(botId, currentBet - botBet);
+                    System.out.println("A bot megadta a tétet.");
+                    return playerBet(botId, currentBet - botBet); // true-t ad vissza a tét megadása esetén
                 } else {
-                    return playerCheck(botId);
+                    System.out.println("A bot passzolt.");
+                    return playerCheck(botId); // true-t ad vissza a passzolás esetén
                 }
             case 2:
                 int raiseAmount = Math.min(currentBet + random.nextInt(20) + 1, botChips + botBet);
-                return playerRaise(botId, raiseAmount);
+                System.out.println("A bot emelt a tétet: " + raiseAmount + " zsetonnal.");
+                return playerRaise(botId, raiseAmount); // true-t ad vissza az emelés esetén
         }
+
+        // Ha valamiért nem sikerül végrehajtani az akciót
+        System.out.println("Ismeretlen akció.");
         return false;
     }
+
 
     private void checkAndProceedToNextPhase() {
         if (gameStatus.allPlayersActed() && gameStatus.areAllBetsEqual()) {

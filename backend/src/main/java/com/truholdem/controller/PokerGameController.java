@@ -1,6 +1,7 @@
 package com.truholdem.controller;
 
 import com.truholdem.model.GameStatus;
+import com.truholdem.model.Player;
 import com.truholdem.model.PlayerInfo;
 import com.truholdem.service.PokerGameService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -299,15 +300,34 @@ public class PokerGameController {
      */
     @PostMapping("/bot-action/{botId}")
     public ResponseEntity<Map<String, String>> performBotAction(@PathVariable String botId) {
-        boolean success = pokerGameService.performBotAction(botId);
         Map<String, String> response = new HashMap<>();
+
+        // Először ellenőrizzük, hogy létezik-e a bot
+        Player bot = pokerGameService.findPlayerById(botId);
+        if (bot == null) {
+            response.put("error", "A megadott bot nem található.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+
+        // Ellenőrizzük, hogy a játékos valóban bot-e
+        if (!bot.isBot()) {
+            response.put("error", "A megadott játékos nem egy bot.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
+        // Végrehajtjuk a bot cselekvést
+        boolean success = pokerGameService.performBotAction(botId);
+
+        // Ha sikeres volt a cselekvés
         if (success) {
             response.put("message", "Bot cselekvés sikeresen végrehajtva.");
-            return ResponseEntity.ok(response);
-        } else {
-            response.put("error", "Nem sikerült végrehajtani a bot cselekvést.");
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.ok(response);  // 200 OK visszaadás
         }
+
+        // Ha nem sikerült végrehajtani a bot cselekvést (pl. nincs elég zseton)
+        response.put("error", "Nem sikerült végrehajtani a bot cselekvést. Ellenőrizd a bot állapotát és zsetonjait.");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
+
 
 }
