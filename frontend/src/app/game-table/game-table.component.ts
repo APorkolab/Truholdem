@@ -8,6 +8,7 @@ import { PlayerService } from '../services/player.service';
 import { PlayerInfo } from '../register-players/register-players.component';
 import { forkJoin } from 'rxjs';
 import { Observable, catchError, throwError } from 'rxjs';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-game-table',
@@ -34,7 +35,7 @@ export class GameTableComponent implements OnInit {
   @ViewChild(RaiseInputComponent) raiseInputComponent!: RaiseInputComponent;
   @ViewChild('raiseModal') raiseModal!: ElementRef;
 
-  constructor(private http: HttpClient, private playerService: PlayerService) { }
+  constructor(private http: HttpClient, private playerService: PlayerService, private router: Router) { }
 
   ngOnInit(): void {
     this.players = this.playerService.getPlayers();
@@ -452,5 +453,9 @@ export class GameTableComponent implements OnInit {
         this.getGameStatus();
       }
     });
+  }
+
+  reloadPageOnStart() {
+    window.location.assign('/');
   }
 }
