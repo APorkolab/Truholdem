@@ -1,14 +1,20 @@
-name: CI
+name: CI + Tools
 on:
   push:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
+  workflow_dispatch: {} # kézi indítás az Angular-20 upgrade PR-hoz
+
+permissions:
+  contents: write
+  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# ===================== BACKEND: JAVA (MAVEN) =====================
 jobs:
   backend-java:
     name: Backend (Java/Maven)
@@ -18,21 +24,32 @@ jobs:
       - uses: actions/checkout@v4
       - id: detect
         run: |
-          if [ -f pom.xml ]; then echo "present=true" >> $GITHUB_OUTPUT; else echo "present=false" >> $GITHUB_OUTPUT; fi
+          if [ -f pom.xml ]; then
+            echo "present=true" >> $GITHUB_OUTPUT
+            # JDK verzió autodetekció (17/21)
+            JAVA=17
+            if grep -Eq '<maven\.compiler\.release>21</maven\.compiler\.release>|<maven\.compiler\.(source|target)>21</maven\.compiler\.(source|target)>' pom.xml; then
+              JAVA=21
+            fi
+            echo "java=$JAVA" >> $GITHUB_OUTPUT
+          else
+            echo "present=false" >> $GITHUB_OUTPUT
+          fi
       - name: Skip (no Java backend)
-        if: steps.detect.outputs.present == 'false'
+        if: steps.detect.outputs.present != 'true'
         run: echo "No backend/pom.xml, skipping Java job."
-      - name: Set up JDK 17
+      - name: Set up JDK
         if: steps.detect.outputs.present == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: ${{ steps.detect.outputs.java }}
           cache: maven
       - name: Build (skip tests for stability)
         if: steps.detect.outputs.present == 'true'
-        run: mvn -B -q -DskipTests -DskipITs -Dmaven.test.skip=true clean package
+        run: mvn -B -q -DskipTests -DskipITs -Dmaven.test.skip=true clean package || mvn -B -q -DskipTests clean package
 
+  # ===================== BACKEND: NODE / EXPRESS =====================
   backend-node:
     name: Backend (Node/Express)
     runs-on: ubuntu-latest
@@ -41,10 +58,14 @@ jobs:
       - uses: actions/checkout@v4
       - id: detect
         run: |
-          if [ -f package.json ] && [ ! -f pom.xml ]; then echo "present=true" >> $GITHUB_OUTPUT; else echo "present=false" >> $GITHUB_OUTPUT; fi
+          if [ -f package.json ] && [ ! -f pom.xml ]; then
+            echo "present=true" >> $GITHUB_OUTPUT
+          else
+            echo "present=false" >> $GITHUB_OUTPUT
+          fi
       - name: Skip (no Node backend)
-        if: steps.detect.outputs.present == 'false'
-        run: echo "No backend/package.json (or Java present), skipping Node job."
+        if: steps.detect.outputs.present != 'true'
+        run: echo "No Node backend (or Java present), skipping."
       - uses: actions/setup-node@v4
         if: steps.detect.outputs.present == 'true'
         with:
@@ -53,30 +74,29 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - name: Install
         if: steps.detect.outputs.present == 'true'
-        run: npm ci
+        run: npm ci || npm ci --legacy-peer-deps
       - name: Lint (best-effort)
         if: steps.detect.outputs.present == 'true'
-        run: npm run lint --if-present || echo "No lint or lint failed — continuing."
+        run: npm run lint --if-present || echo "No lint or failed — continuing."
       - name: Build (best-effort)
         if: steps.detect.outputs.present == 'true'
         run: npm run build --if-present || echo "No build script — continuing."
       - name: Test (best-effort)
         if: steps.detect.outputs.present == 'true'
-        run: npm test --if-present || echo "No tests or tests failed — continuing."
+        run: npm test --if-present || echo "No tests or failed — continuing."
 
+  # ===================== FRONTEND: ANGULAR =====================
   frontend-angular:
     name: Frontend (Angular)
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: frontend } }
-    env:
-      CI: true
     steps:
       - uses: actions/checkout@v4
       - id: detect
         run: |
           if [ -f package.json ]; then echo "present=true" >> $GITHUB_OUTPUT; else echo "present=false" >> $GITHUB_OUTPUT; fi
       - name: Skip (no frontend)
-        if: steps.detect.outputs.present == 'false'
+        if: steps.detect.outputs.present != 'true'
         run: echo "No frontend/package.json, skipping Angular job."
       - uses: actions/setup-node@v4
         if: steps.detect.outputs.present == 'true'
@@ -84,10 +104,11 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Install
+      - name: Install (smart fallback for peer deps)
         if: steps.detect.outputs.present == 'true'
-        run: npm ci
-      - name: Build Angular (no tests; stable)
+        run: |
+          npm ci || npm ci --legacy-peer-deps
+      - name: Build Angular (no tests)
         if: steps.detect.outputs.present == 'true'
         run: |
           if [ -f angular.json ]; then
@@ -98,4 +119,38 @@ jobs:
       - name: Optional tests (best-effort)
         if: steps.detect.outputs.present == 'true'
         run: |
-          npm run test --if-present -- --watch=false --browsers=ChromeHeadless --no-sandbox || echo "Skipping Angular tests (no Chrome or tests)."
+          npm run test --if-present -- --watch=false --browsers=ChromeHeadless --no-sandbox || echo "Skipping Angular tests."
+
+  # ===================== MANUAL TOOL: ANGULAR 20 UPGRADE PR =====================
+  upgrade-angular20:
+    name: Tool – Upgrade Angular to v20 (PR)
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Upgrade to Angular v20
+        run: |
+          npx -y @angular/cli@20 update @angular/core@20 @angular/cli@20 --force --allow-dirty
+          npm i -D @angular-devkit/build-angular@^20
+          rm -f package-lock.json
+          npm i
+          if [ -f angular.json ]; then npm run build -- --configuration=production; fi
+
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: chore/angular20
+          title: "chore(frontend): upgrade Angular to v20"
+          commit-message: "chore(frontend): upgrade Angular core/cli/build-angular to v20"
+          body: |
+            Automated Angular 20 upgrade:
+            - @angular/core & @angular/cli -> v20
+            - @angular-devkit/build-angular -> ^20
+            - Build verified
+          labels: dependencies, angular
