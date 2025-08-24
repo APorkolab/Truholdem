@@ -4,7 +4,7 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch: {} # Manual trigger for the "Tool – Angular 20 upgrade PR" job
+  workflow_dispatch: {} # Manual trigger for the "Tool – Angular Latest Upgrade PR" job
 
 permissions:
   contents: write
@@ -169,20 +169,31 @@ jobs:
           echo "CORE_MAJ=$CORE_MAJ" >> $GITHUB_OUTPUT
           echo "BUILD_MAJ=$BUILD_MAJ" >> $GITHUB_OUTPUT
 
-      # If Angular and version mismatch -> auto-upgrade to v20
-      - name: Auto-upgrade Angular to v20 (only if Angular)
-        if: ${{ steps.ngver.outputs.HAS_NG == 'yes' && (fromJSON(steps.ngver.outputs.CORE_MAJ) < 20 || fromJSON(steps.ngver.outputs.BUILD_MAJ) >= 20) }}
+      # Get latest Angular version from NPM
+      - name: Get latest Angular version
+        if: ${{ steps.ngver.outputs.HAS_NG == 'yes' }}
+        id: nglatest
+        run: |
+          LATEST_VER=$(npm view @angular/core version)
+          LATEST_MAJ=$(echo "$LATEST_VER" | sed 's/\..*//')
+          echo "LATEST_VER=$LATEST_VER" >> $GITHUB_OUTPUT
+          echo "LATEST_MAJ=$LATEST_MAJ" >> $GITHUB_OUTPUT
+
+      # If Angular and version mismatch -> auto-upgrade to latest
+      - name: Auto-upgrade Angular to latest (only if Angular)
+        if: ${{ steps.ngver.outputs.HAS_NG == 'yes' && steps.nglatest.outputs.LATEST_MAJ != '' && (fromJSON(steps.ngver.outputs.CORE_MAJ) < fromJSON(steps.nglatest.outputs.LATEST_MAJ)) }}
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
-          echo "Upgrading all Angular packages to v20 to avoid peer dependency conflicts..."
+          LATEST_VER=${{ steps.nglatest.outputs.LATEST_VER }}
+          echo "Upgrading all Angular packages to v$LATEST_VER to avoid peer dependency conflicts..."
           # Upgrade all core dependencies at once
-          npm i @angular/animations@20 @angular/common@20 @angular/compiler@20 @angular/core@20 @angular/forms@20 @angular/platform-browser@20 @angular/platform-browser-dynamic@20 @angular/router@20 @angular/cli@20 --force
+          npm i @angular/animations@$LATEST_VER @angular/common@$LATEST_VER @angular/compiler@$LATEST_VER @angular/core@$LATEST_VER @angular/forms@$LATEST_VER @angular/platform-browser@$LATEST_VER @angular/platform-browser-dynamic@$LATEST_VER @angular/router@$LATEST_VER @angular/cli@$LATEST_VER --force
           # Upgrade dev dependencies
-          npm i -D @angular/compiler-cli@^20 @angular-devkit/build-angular@^20 || true
+          npm i -D @angular/compiler-cli@^$LATEST_VER @angular-devkit/build-angular@^$LATEST_VER || true
           
           # Recreate lock file and install
           rm -f package-lock.json
-          npm ci --legacy-peer-deps
+          npm install --legacy-peer-deps
 
       - name: Install deps (tolerant)
         run: |
@@ -208,9 +219,9 @@ jobs:
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
           npm run test --if-present -- --watch=false --browsers=ChromeHeadless --no-sandbox || echo "Skipping tests."
 
-  # =============== TOOL: Manual Angular 20 upgrade PR ===============
-  upgrade-angular20:
-    name: Tool – Angular 20 upgrade PR
+  # =============== TOOL: Manual Angular Latest Upgrade PR ===============
+  upgrade-angular-latest:
+    name: Tool – Angular Latest Upgrade PR
     needs: [detect-paths]
     if: ${{ github.event_name == 'workflow_dispatch' && needs.detect-paths.outputs.FRONT_DIR != '' && needs.detect-paths.outputs.FRONT_IS_ANGULAR == 'true' }}
     runs-on: ubuntu-latest
@@ -220,28 +231,36 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      
+      - name: Get latest Angular version
+        id: nglatest
+        run: |
+          LATEST_VER=$(npm view @angular/core version)
+          echo "LATEST_VER=$LATEST_VER" >> $GITHUB_OUTPUT
+
       - name: Upgrade in detected frontend
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
-          echo "Upgrading all Angular packages to v20 to avoid peer dependency conflicts..."
+          LATEST_VER=${{ steps.nglatest.outputs.LATEST_VER }}
+          echo "Upgrading all Angular packages to v$LATEST_VER to avoid peer dependency conflicts..."
           # Upgrade all core dependencies at once
-          npm i @angular/animations@20 @angular/common@20 @angular/compiler@20 @angular/core@20 @angular/forms@20 @angular/platform-browser@20 @angular/platform-browser-dynamic@20 @angular/router@20 @angular/cli@20 --force
+          npm i @angular/animations@$LATEST_VER @angular/common@$LATEST_VER @angular/compiler@$LATEST_VER @angular/core@$LATEST_VER @angular/forms@$LATEST_VER @angular/platform-browser@$LATEST_VER @angular/platform-browser-dynamic@$LATEST_VER @angular/router@$LATEST_VER @angular/cli@$LATEST_VER --force
           # Upgrade dev dependencies
-          npm i -D @angular/compiler-cli@^20 @angular-devkit/build-angular@^20 || true
+          npm i -D @angular/compiler-cli@^$LATEST_VER @angular-devkit/build-angular@^$LATEST_VER || true
           
           # Recreate lock file and install
           rm -f package-lock.json
-          npm ci --legacy-peer-deps
+          npm install --legacy-peer-deps
           if [ -f angular.json ]; then npm run build -- --configuration=production; fi
       - name: Create PR
         uses: peter-evans/create-pull-request@v6
         with:
-          branch: chore/angular20
-          title: "chore(frontend): upgrade Angular to v20"
-          commit-message: "chore(frontend): upgrade Angular core/cli/build-angular to v20"
+          branch: chore/angular-latest
+          title: "chore(frontend): upgrade Angular to v${{ steps.nglatest.outputs.LATEST_VER }}"
+          commit-message: "chore(frontend): upgrade Angular packages to v${{ steps.nglatest.outputs.LATEST_VER }}"
           body: |
-            Automated Angular 20 upgrade in `${{ needs.detect-paths.outputs.FRONT_DIR }}`:
-            - All @angular/* packages -> v20
-            - @angular-devkit/build-angular -> ^20
+            Automated Angular ${{ steps.nglatest.outputs.LATEST_VER }} upgrade in `${{ needs.detect-paths.outputs.FRONT_DIR }}`:
+            - All @angular/* packages -> v${{ steps.nglatest.outputs.LATEST_VER }}
+            - @angular-devkit/build-angular -> ^${{ steps.nglatest.outputs.LATEST_VER }}
             - Build verified
           labels: dependencies, angular
