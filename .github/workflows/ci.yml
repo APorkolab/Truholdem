@@ -86,47 +86,54 @@ jobs:
 
   # =============== FRONTEND: ANGULAR ===============
   frontend-angular:
-    name: Frontend (Angular)
+    name: Frontend (Angular / generic)
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: frontend } }
     steps:
       - uses: actions/checkout@v4
 
-      - id: present
+      # Van-e egyáltalán frontend és Angular?
+      - id: detect
         run: |
-          if [ -f package.json ]; then echo "present=true" >> $GITHUB_OUTPUT; else echo "present=false" >> $GITHUB_OUTPUT; fi
+          if [ ! -f package.json ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "present=true" >> $GITHUB_OUTPUT
+          HAS_NG=$(node -p "p=require('./package.json');(p.dependencies&&p.dependencies['@angular/core'])||(p.devDependencies&&p.devDependencies['@angular/core'])? 'true':'false'")
+          echo "has_ng=$HAS_NG" >> $GITHUB_OUTPUT
+
+          # verziók csak akkor, ha Angular van
+          if [ "$HAS_NG" = "true" ]; then
+            CORE_VER=$(node -p "p=require('./package.json');(p.dependencies?.['@angular/core']||p.devDependencies?.['@angular/core']||'')")
+            BUILD_VER=$(node -p "p=require('./package.json');(p.devDependencies?.['@angular-devkit/build-angular']||p.devDependencies?.['@angular/build']||'')")
+            CORE_MAJ=$(echo "$CORE_VER" | sed -E 's/[^0-9]*([0-9]+).*/\1/'); [ -z "$CORE_MAJ" ] && CORE_MAJ=0
+            BUILD_MAJ=$(echo "$BUILD_VER" | sed -E 's/[^0-9]*([0-9]+).*/\1/'); [ -z "$BUILD_MAJ" ] && BUILD_MAJ=0
+            NEED_UPGRADE=false
+            if [ "$CORE_MAJ" -lt 20 ] || [ "$BUILD_MAJ" -ge 20 ]; then NEED_UPGRADE=true; fi
+            echo "core_major=$CORE_MAJ" >> $GITHUB_OUTPUT
+            echo "build_major=$BUILD_MAJ" >> $GITHUB_OUTPUT
+            echo "need_upgrade=$NEED_UPGRADE" >> $GITHUB_OUTPUT
+          else
+            echo "core_major=0" >> $GITHUB_OUTPUT
+            echo "build_major=0" >> $GITHUB_OUTPUT
+            echo "need_upgrade=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Skip (no frontend)
-        if: steps.present.outputs.present != 'true'
-        run: echo "No frontend/package.json, skipping Angular job."
+        if: steps.detect.outputs.present != 'true'
+        run: echo "No frontend/package.json, skipping."
 
       - uses: actions/setup-node@v4
-        if: steps.present.outputs.present == 'true'
+        if: steps.detect.outputs.present == 'true'
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - id: detect
-        if: steps.present.outputs.present == 'true'
-        name: Detect Angular & builder versions
-        run: |
-          CORE_VER=$(node -p "try{(require('./package.json').dependencies||{})['@angular/core']||''}catch(e){''}")
-          BUILD_VER=$(node -p "try{(require('./package.json').devDependencies||{})['@angular-devkit/build-angular']||(require('./package.json').devDependencies||{})['@angular/build']||''}catch(e){''}")
-          CORE_MAJ=$(echo "$CORE_VER" | sed -E 's/[^0-9]*([0-9]+).*/\1/'); [ -z "$CORE_MAJ" ] && CORE_MAJ=0
-          BUILD_MAJ=$(echo "$BUILD_VER" | sed -E 's/[^0-9]*([0-9]+).*/\1/'); [ -z "$BUILD_MAJ" ] && BUILD_MAJ=0
-
-          NEED_UPGRADE=false
-          if [ "$CORE_MAJ" -lt 20 ] || [ "$BUILD_MAJ" -ge 20 ]; then NEED_UPGRADE=true; fi
-
-          echo "core=$CORE_VER" >> $GITHUB_OUTPUT
-          echo "core_major=$CORE_MAJ" >> $GITHUB_OUTPUT
-          echo "build=$BUILD_VER" >> $GITHUB_OUTPUT
-          echo "build_major=$BUILD_MAJ" >> $GITHUB_OUTPUT
-          echo "need_upgrade=$NEED_UPGRADE" >> $GITHUB_OUTPUT
-
-      - name: Auto-upgrade Angular to v20 when mismatch
-        if: steps.detect.outputs.need_upgrade == 'true'
+      # Angular autoupgrade CSAK akkor, ha tényleg Angular
+      - name: Auto-upgrade Angular to v20
+        if: steps.detect.outputs.present == 'true' && steps.detect.outputs.has_ng == 'true' && steps.detect.outputs.need_upgrade == 'true'
         run: |
           echo "Upgrading Angular to v20 (core/cli/build-angular)…"
           npx -y @angular/cli@20 update @angular/core@20 @angular/cli@20 --force --allow-dirty
@@ -136,26 +143,27 @@ jobs:
           npm ci
 
       - name: Install deps
-        if: steps.present.outputs.present == 'true'
+        if: steps.detect.outputs.present == 'true'
         run: npm ci || npm ci --legacy-peer-deps
 
-      - name: Build Angular (no tests)
-        if: steps.present.outputs.present == 'true'
+      # Build: ha Angular, ng build; különben generikus npm run build (ha van)
+      - name: Build
+        if: steps.detect.outputs.present == 'true'
         run: |
-          if [ -f angular.json ]; then
-            # ha a script már tartalmaz --configuration=... paramot, ne adjuk hozzá még egyszer
+          if [ "${{ steps.detect.outputs.has_ng }}" = "true" ] && [ -f angular.json ]; then
+            # ha a script már tartalmaz --configuration=..., akkor ne adjuk hozzá még egyszer
             if node -e "p=require('./package.json');process.exit((p.scripts&&p.scripts.build||'').includes('--configuration=')?0:1)"; then
               npm run build
             else
               npm run build -- --configuration=production
             fi
           else
-            npm run build --if-present || echo "No Angular workspace — continuing."
+            npm run build --if-present || echo "Generic frontend build script not found — skipping."
           fi
 
       - name: Optional tests (best-effort)
-        if: steps.present.outputs.present == 'true'
-        run: npm run test --if-present -- --watch=false --browsers=ChromeHeadless --no-sandbox || echo "Skipping Angular tests."
+        if: steps.detect.outputs.present == 'true'
+        run: npm test --if-present || echo "No tests — continuing."
 
   # =============== MANUAL TOOL: ANGULAR 20 UPGRADE PR ===============
   upgrade-angular20:
