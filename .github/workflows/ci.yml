@@ -4,7 +4,7 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch: {}
+  workflow_dispatch: {} # kézi indítás a "Tool – Angular 20 upgrade PR" jobhoz
 
 permissions:
   contents: write
@@ -15,126 +15,165 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # =============== PATH DETECT (egy helyen keressünk mindent) ===============
+  detect-paths:
+    name: Detect project paths
+    runs-on: ubuntu-latest
+    outputs:
+      FRONT_DIR: ${{ steps.out.outputs.FRONT_DIR }}
+      FRONT_IS_ANGULAR: ${{ steps.out.outputs.FRONT_IS_ANGULAR }}
+      JAVA_DIR: ${{ steps.out.outputs.JAVA_DIR }}
+      NODE_DIR: ${{ steps.out.outputs.NODE_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: out
+        run: |
+          # --- Frontend keresés: preferáljuk a 'frontend/' gyökerét, különben bárhol angular.json ---
+          FRONT_DIR=""
+          if [ -f frontend/package.json ]; then
+            FRONT_DIR="frontend"
+          else
+            hit="$(find . -maxdepth 3 -type f -name angular.json | head -n1 || true)"
+            if [ -n "$hit" ]; then
+              FRONT_DIR="$(dirname "$hit" | sed 's|^\./||')"
+            fi
+          fi
+
+          FRONT_IS_ANGULAR="false"
+          if [ -n "$FRONT_DIR" ] && [ -f "$FRONT_DIR/package.json" ]; then
+            HAS_NG=$(node -p "p=require('./$FRONT_DIR/package.json');(p.dependencies&&p.dependencies['@angular/core'])||(p.devDependencies&&p.devDependencies['@angular/core'])? 'true':'false'" || echo "false")
+            FRONT_IS_ANGULAR="$HAS_NG"
+          fi
+
+          # --- Java backend keresés: prefer 'backend/', majd 'api/', majd bármelyik pom.xml ---
+          JAVA_DIR=""
+          if [ -f backend/pom.xml ]; then
+            JAVA_DIR="backend"
+          elif [ -f api/pom.xml ]; then
+            JAVA_DIR="api"
+          else
+            hit="$(find . -maxdepth 3 -type f -name pom.xml | head -n1 || true)"
+            if [ -n "$hit" ]; then
+              JAVA_DIR="$(dirname "$hit" | sed 's|^\./||')"
+            fi
+          fi
+
+          # --- Node backend keresés: prefer 'backend/' vagy 'api/' package.json (ha ugyanott nincs pom.xml) ---
+          NODE_DIR=""
+          if [ -f backend/package.json ] && [ ! -f backend/pom.xml ]; then
+            NODE_DIR="backend"
+          elif [ -f api/package.json ] && [ ! -f api/pom.xml ]; then
+            NODE_DIR="api"
+          else
+            hit="$(find . -maxdepth 3 -type f -name package.json | grep -Ev '^\.\/(node_modules|frontend|web|dist|build)\/' | head -n1 || true)"
+            if [ -n "$hit" ]; then
+              d="$(dirname "$hit" | sed 's|^\./||')"
+              if [ ! -f "$d/pom.xml" ]; then NODE_DIR="$d"; fi
+            fi
+          fi
+
+          echo "FRONT_DIR=$FRONT_DIR" >> $GITHUB_OUTPUT
+          echo "FRONT_IS_ANGULAR=$FRONT_IS_ANGULAR" >> $GITHUB_OUTPUT
+          echo "JAVA_DIR=$JAVA_DIR" >> $GITHUB_OUTPUT
+          echo "NODE_DIR=$NODE_DIR" >> $GITHUB_OUTPUT
+
   # =============== BACKEND: JAVA (MAVEN) ===============
   backend-java:
     name: Backend (Java/Maven)
+    needs: [detect-paths]
     runs-on: ubuntu-latest
-    defaults: { run: { working-directory: backend } }
+    if: ${{ needs.detect-paths.outputs.JAVA_DIR != '' }}
     steps:
       - uses: actions/checkout@v4
-      - id: detect
+      - id: jd
         run: |
-          if [ -f pom.xml ]; then
-            echo "present=true" >> $GITHUB_OUTPUT
-            JAVA=17
-            if grep -Eq '<maven\.compiler\.release>21</maven\.compiler\.release>|<maven\.compiler\.(source|target)>21</maven\.compiler\.(source|target)>' pom.xml; then
-              JAVA=21
-            fi
-            echo "java=$JAVA" >> $GITHUB_OUTPUT
-          else
-            echo "present=false" >> $GITHUB_OUTPUT
+          cd "${{ needs.detect-paths.outputs.JAVA_DIR }}"
+          JAVA=17
+          if grep -Eq '<maven\.compiler\.release>21</maven\.compiler\.release>|<maven\.compiler\.(source|target)>21</maven\.compiler\.(source|target)>' pom.xml; then
+            JAVA=21
           fi
-      - name: Skip (no Java backend)
-        if: steps.detect.outputs.present != 'true'
-        run: echo "No backend/pom.xml, skipping Java job."
+          echo "java=$JAVA" >> $GITHUB_OUTPUT
       - name: Set up JDK
-        if: steps.detect.outputs.present == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: ${{ steps.detect.outputs.java }}
+          java-version: ${{ steps.jd.outputs.java }}
           cache: maven
       - name: Build (skip tests for stability)
-        if: steps.detect.outputs.present == 'true'
-        run: mvn -B -q -DskipTests -DskipITs -Dmaven.test.skip=true clean package || mvn -B -q -DskipTests clean package
+        run: |
+          cd "${{ needs.detect-paths.outputs.JAVA_DIR }}"
+          mvn -B -q -DskipTests -DskipITs -Dmaven.test.skip=true clean package || mvn -B -q -DskipTests clean package
 
   # =============== BACKEND: NODE / EXPRESS ===============
   backend-node:
     name: Backend (Node/Express)
+    needs: [detect-paths]
     runs-on: ubuntu-latest
-    defaults: { run: { working-directory: backend } }
+    if: ${{ needs.detect-paths.outputs.NODE_DIR != '' }}
     steps:
       - uses: actions/checkout@v4
-      - id: detect
-        run: |
-          if [ -f package.json ] && [ ! -f pom.xml ]; then
-            echo "present=true" >> $GITHUB_OUTPUT
-          else
-            echo "present=false" >> $GITHUB_OUTPUT
-          fi
-      - name: Skip (no Node backend)
-        if: steps.detect.outputs.present != 'true'
-        run: echo "No Node backend (or Java present), skipping."
       - uses: actions/setup-node@v4
-        if: steps.detect.outputs.present == 'true'
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: ${{ needs.detect-paths.outputs.NODE_DIR }}/package-lock.json
       - name: Install
-        if: steps.detect.outputs.present == 'true'
-        run: npm ci || npm ci --legacy-peer-deps
+        run: |
+          cd "${{ needs.detect-paths.outputs.NODE_DIR }}"
+          npm ci || npm ci --legacy-peer-deps
       - name: Lint (best-effort)
-        if: steps.detect.outputs.present == 'true'
-        run: npm run lint --if-present || echo "No lint or failed — continuing."
+        run: |
+          cd "${{ needs.detect-paths.outputs.NODE_DIR }}"
+          npm run lint --if-present || echo "No lint or failed — continuing."
       - name: Build (best-effort)
-        if: steps.detect.outputs.present == 'true'
-        run: npm run build --if-present || echo "No build script — continuing."
+        run: |
+          cd "${{ needs.detect-paths.outputs.NODE_DIR }}"
+          npm run build --if-present || echo "No build script — continuing."
       - name: Test (best-effort)
-        if: steps.detect.outputs.present == 'true'
-        run: npm test --if-present || echo "No tests or failed — continuing."
+        run: |
+          cd "${{ needs.detect-paths.outputs.NODE_DIR }}"
+          npm test --if-present || echo "No tests or failed — continuing."
 
-  # =============== FRONTEND: ANGULAR ===============
-  frontend-angular:
-    name: Frontend (Angular / generic)
+  # =============== FRONTEND: ANGULAR / GENERIC ===============
+  frontend:
+    name: Frontend
+    needs: [detect-paths]
     runs-on: ubuntu-latest
-    defaults: { run: { working-directory: frontend } }
+    if: ${{ needs.detect-paths.outputs.FRONT_DIR != '' }}
     steps:
       - uses: actions/checkout@v4
 
-      # Van-e egyáltalán frontend és Angular?
-      - id: detect
-        run: |
-          if [ ! -f package.json ]; then
-            echo "present=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          echo "present=true" >> $GITHUB_OUTPUT
-          HAS_NG=$(node -p "p=require('./package.json');(p.dependencies&&p.dependencies['@angular/core'])||(p.devDependencies&&p.devDependencies['@angular/core'])? 'true':'false'")
-          echo "has_ng=$HAS_NG" >> $GITHUB_OUTPUT
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ needs.detect-paths.outputs.FRONT_DIR }}/package-lock.json
 
-          # verziók csak akkor, ha Angular van
-          if [ "$HAS_NG" = "true" ]; then
-            CORE_VER=$(node -p "p=require('./package.json');(p.dependencies?.['@angular/core']||p.devDependencies?.['@angular/core']||'')")
-            BUILD_VER=$(node -p "p=require('./package.json');(p.devDependencies?.['@angular-devkit/build-angular']||p.devDependencies?.['@angular/build']||'')")
+      # Angular csak akkor, ha tényleg Angular-projekt a megtalált mappában
+      - id: ngver
+        run: |
+          cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
+          HAS_NG=$(node -p "p=require('./package.json');(p.dependencies&&p.dependencies['@angular/core'])||(p.devDependencies&&p.devDependencies['@angular/core'])? 'yes':'no'" || echo "no")
+          CORE_VER=""
+          BUILD_VER=""
+          CORE_MAJ=0
+          BUILD_MAJ=0
+          if [ "$HAS_NG" = "yes" ]; then
+            CORE_VER=$(node -p "p=require('./package.json');(p.dependencies?.['@angular/core']||p.devDependencies?.['@angular/core']||'')" || echo "")
+            BUILD_VER=$(node -p "p=require('./package.json');(p.devDependencies?.['@angular-devkit/build-angular']||p.devDependencies?.['@angular/build']||'')" || echo "")
             CORE_MAJ=$(echo "$CORE_VER" | sed -E 's/[^0-9]*([0-9]+).*/\1/'); [ -z "$CORE_MAJ" ] && CORE_MAJ=0
             BUILD_MAJ=$(echo "$BUILD_VER" | sed -E 's/[^0-9]*([0-9]+).*/\1/'); [ -z "$BUILD_MAJ" ] && BUILD_MAJ=0
-            NEED_UPGRADE=false
-            if [ "$CORE_MAJ" -lt 20 ] || [ "$BUILD_MAJ" -ge 20 ]; then NEED_UPGRADE=true; fi
-            echo "core_major=$CORE_MAJ" >> $GITHUB_OUTPUT
-            echo "build_major=$BUILD_MAJ" >> $GITHUB_OUTPUT
-            echo "need_upgrade=$NEED_UPGRADE" >> $GITHUB_OUTPUT
-          else
-            echo "core_major=0" >> $GITHUB_OUTPUT
-            echo "build_major=0" >> $GITHUB_OUTPUT
-            echo "need_upgrade=false" >> $GITHUB_OUTPUT
           fi
+          echo "HAS_NG=$HAS_NG" >> $GITHUB_OUTPUT
+          echo "CORE_MAJ=$CORE_MAJ" >> $GITHUB_OUTPUT
+          echo "BUILD_MAJ=$BUILD_MAJ" >> $GITHUB_OUTPUT
 
-      - name: Skip (no frontend)
-        if: steps.detect.outputs.present != 'true'
-        run: echo "No frontend/package.json, skipping."
-
-      - uses: actions/setup-node@v4
-        if: steps.detect.outputs.present == 'true'
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      # Angular autoupgrade CSAK akkor, ha tényleg Angular
-      - name: Auto-upgrade Angular to v20
-        if: steps.detect.outputs.present == 'true' && steps.detect.outputs.has_ng == 'true' && steps.detect.outputs.need_upgrade == 'true'
+      # Ha Angular és verzióütközés várható → automata upgrade v20-ra (csak Angularnál)
+      - name: Auto-upgrade Angular to v20 (only if Angular)
+        if: ${{ steps.ngver.outputs.HAS_NG == 'yes' && (fromJSON(steps.ngver.outputs.CORE_MAJ) < 20 || fromJSON(steps.ngver.outputs.BUILD_MAJ) >= 20) }}
         run: |
+          cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
           echo "Upgrading Angular to v20 (core/cli/build-angular)…"
           npx -y @angular/cli@20 update @angular/core@20 @angular/cli@20 --force --allow-dirty
           npm i -D @angular-devkit/build-angular@^20 || true
@@ -142,43 +181,60 @@ jobs:
           rm -f package-lock.json
           npm ci
 
-      - name: Install deps
-        if: steps.detect.outputs.present == 'true'
-        run: npm ci || npm ci --legacy-peer-deps
-
-      # Build: ha Angular, ng build; különben generikus npm run build (ha van)
-      - name: Build
-        if: steps.detect.outputs.present == 'true'
+      - name: Install deps (toleráns)
         run: |
-          if [ "${{ steps.detect.outputs.has_ng }}" = "true" ] && [ -f angular.json ]; then
-            # ha a script már tartalmaz --configuration=..., akkor ne adjuk hozzá még egyszer
+          cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
+          npm ci || npm ci --legacy-peer-deps
+
+      - name: Build (Angular vagy generikus)
+        run: |
+          cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
+          if [ -f angular.json ] && [ "${{ steps.ngver.outputs.HAS_NG }}" = "yes" ]; then
+            # ha a build script már tartalmaz --configuration=..., ne adjuk hozzá újra
             if node -e "p=require('./package.json');process.exit((p.scripts&&p.scripts.build||'').includes('--configuration=')?0:1)"; then
               npm run build
             else
               npm run build -- --configuration=production
             fi
           else
-            npm run build --if-present || echo "Generic frontend build script not found — skipping."
+            npm run build --if-present || echo "No non-Angular build script — skipping."
           fi
 
       - name: Optional tests (best-effort)
-        if: steps.detect.outputs.present == 'true'
-        run: npm test --if-present || echo "No tests — continuing."
+        run: |
+          cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
+          npm run test --if-present -- --watch=false --browsers=ChromeHeadless --no-sandbox || echo "Skipping tests."
 
-  # =============== MANUAL TOOL: ANGULAR 20 UPGRADE PR ===============
+  # =============== TOOL: kézi Angular 20 upgrade PR ===============
   upgrade-angular20:
-    name: Tool – Upgrade Angular to v20 (PR)
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    name: Tool – Angular 20 upgrade PR
+    needs: [detect-paths]
+    if: ${{ github.event_name == 'workflow_dispatch' && needs.detect-paths.outputs.FRONT_DIR != '' && needs.detect-paths.outputs.FRONT_IS_ANGULAR == 'true' }}
     runs-on: ubuntu-latest
-    defaults: { run: { working-directory: frontend } }
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Upgrade to Angular v20
+      - name: Upgrade in detected frontend
         run: |
+          cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
           npx -y @angular/cli@20 update @angular/core@20 @angular/cli@20 --force --allow-dirty
-          npm i -D @angular-devkit/build-angular@^20
-          rm -f package-loc
+          npm i -D @angular-devkit/build-angular@^20 || true
+          npm i -D @angular/build@^20 || true
+          rm -f package-lock.json
+          npm ci
+          if [ -f angular.json ]; then npm run build -- --configuration=production; fi
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: chore/angular20
+          title: "chore(frontend): upgrade Angular to v20"
+          commit-message: "chore(frontend): upgrade Angular core/cli/build-angular to v20"
+          body: |
+            Automated Angular 20 upgrade in `${{ needs.detect-paths.outputs.FRONT_DIR }}`:
+            - @angular/core & @angular/cli -> v20
+            - @angular-devkit/build-angular / @angular/build -> ^20
+            - Build verified
+          labels: dependencies, angular
