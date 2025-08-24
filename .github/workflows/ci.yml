@@ -4,7 +4,7 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch: {} # kézi indítás az Angular-20 upgrade PR-hoz
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -14,8 +14,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# ===================== BACKEND: JAVA (MAVEN) =====================
 jobs:
+  # =============== BACKEND: JAVA (MAVEN) ===============
   backend-java:
     name: Backend (Java/Maven)
     runs-on: ubuntu-latest
@@ -26,7 +26,6 @@ jobs:
         run: |
           if [ -f pom.xml ]; then
             echo "present=true" >> $GITHUB_OUTPUT
-            # JDK verzió autodetekció (17/21)
             JAVA=17
             if grep -Eq '<maven\.compiler\.release>21</maven\.compiler\.release>|<maven\.compiler\.(source|target)>21</maven\.compiler\.(source|target)>' pom.xml; then
               JAVA=21
@@ -49,7 +48,7 @@ jobs:
         if: steps.detect.outputs.present == 'true'
         run: mvn -B -q -DskipTests -DskipITs -Dmaven.test.skip=true clean package || mvn -B -q -DskipTests clean package
 
-  # ===================== BACKEND: NODE / EXPRESS =====================
+  # =============== BACKEND: NODE / EXPRESS ===============
   backend-node:
     name: Backend (Node/Express)
     runs-on: ubuntu-latest
@@ -85,69 +84,66 @@ jobs:
         if: steps.detect.outputs.present == 'true'
         run: npm test --if-present || echo "No tests or failed — continuing."
 
-  # ===================== FRONTEND: ANGULAR =====================
-   frontend-angular:
+  # =============== FRONTEND: ANGULAR ===============
+  frontend-angular:
     name: Frontend (Angular)
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: frontend } }
     steps:
       - uses: actions/checkout@v4
 
-      - id: detect
-        name: Detect Angular & builder versions
+      - id: present
         run: |
-          if [ ! -f package.json ]; then
-            echo "present=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          echo "present=true" >> $GITHUB_OUTPUT
-
-          CORE_VER=$(node -p "try{require('./package.json').dependencies['@angular/core']||''}catch(e){''}")
-          CORE_MAJ=$(node -p "String(process.env.CORE_VER||'').match(/\d+/)?.[0]||''")
-          BUILD_VER=$(node -p "try{(require('./package.json').devDependencies['@angular-devkit/build-angular']||require('./package.json').devDependencies['@angular/build']||'')}catch(e){''}")
-          BUILD_MAJ=$(node -p "String(process.env.BUILD_VER||'').match(/\d+/)?.[0]||''")
-
-          echo "core=$CORE_VER" >> $GITHUB_OUTPUT
-          echo "core_major=$CORE_MAJ" >> $GITHUB_OUTPUT
-          echo "build=$BUILD_VER" >> $GITHUB_OUTPUT
-          echo "build_major=$BUILD_MAJ" >> $GITHUB_OUTPUT
+          if [ -f package.json ]; then echo "present=true" >> $GITHUB_OUTPUT; else echo "present=false" >> $GITHUB_OUTPUT; fi
 
       - name: Skip (no frontend)
-        if: steps.detect.outputs.present != 'true'
+        if: steps.present.outputs.present != 'true'
         run: echo "No frontend/package.json, skipping Angular job."
 
       - uses: actions/setup-node@v4
-        if: steps.detect.outputs.present == 'true'
+        if: steps.present.outputs.present == 'true'
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      # Ha a builder 20 és/vagy a core < 20 → automatikus upgrade Angular 20-ra
+      - id: detect
+        if: steps.present.outputs.present == 'true'
+        name: Detect Angular & builder versions
+        run: |
+          CORE_VER=$(node -p "try{(require('./package.json').dependencies||{})['@angular/core']||''}catch(e){''}")
+          BUILD_VER=$(node -p "try{(require('./package.json').devDependencies||{})['@angular-devkit/build-angular']||(require('./package.json').devDependencies||{})['@angular/build']||''}catch(e){''}")
+          CORE_MAJ=$(echo "$CORE_VER" | sed -E 's/[^0-9]*([0-9]+).*/\1/'); [ -z "$CORE_MAJ" ] && CORE_MAJ=0
+          BUILD_MAJ=$(echo "$BUILD_VER" | sed -E 's/[^0-9]*([0-9]+).*/\1/'); [ -z "$BUILD_MAJ" ] && BUILD_MAJ=0
+
+          NEED_UPGRADE=false
+          if [ "$CORE_MAJ" -lt 20 ] || [ "$BUILD_MAJ" -ge 20 ]; then NEED_UPGRADE=true; fi
+
+          echo "core=$CORE_VER" >> $GITHUB_OUTPUT
+          echo "core_major=$CORE_MAJ" >> $GITHUB_OUTPUT
+          echo "build=$BUILD_VER" >> $GITHUB_OUTPUT
+          echo "build_major=$BUILD_MAJ" >> $GITHUB_OUTPUT
+          echo "need_upgrade=$NEED_UPGRADE" >> $GITHUB_OUTPUT
+
       - name: Auto-upgrade Angular to v20 when mismatch
-        if: steps.detect.outputs.present == 'true' && (steps.detect.outputs.core_major == '' || fromJSON(steps.detect.outputs.core_major) < 20 || fromJSON(steps.detect.outputs.build_major || '0') >= 20)
+        if: steps.detect.outputs.need_upgrade == 'true'
         run: |
           echo "Upgrading Angular to v20 (core/cli/build-angular)…"
           npx -y @angular/cli@20 update @angular/core@20 @angular/cli@20 --force --allow-dirty
-          # Mindkét builder név támogatása (régi/új csomagolás)
           npm i -D @angular-devkit/build-angular@^20 || true
           npm i -D @angular/build@^20 || true
           rm -f package-lock.json
           npm ci
 
-      # Normál install (ha nincs szükség upgrade-re). ERESOLVE esetén fallback.
       - name: Install deps
-        if: steps.detect.outputs.present == 'true'
-        run: |
-          npm ci || npm ci --legacy-peer-deps
+        if: steps.present.outputs.present == 'true'
+        run: npm ci || npm ci --legacy-peer-deps
 
-      # Biztonság kedvéért: ha a package.json script már tartalmazza a configuration-t,
-      # akkor ne adjuk hozzá még egyszer. Két út:
       - name: Build Angular (no tests)
-        if: steps.detect.outputs.present == 'true'
+        if: steps.present.outputs.present == 'true'
         run: |
           if [ -f angular.json ]; then
-            # Ha a build script már tartalmaz --configuration=..., akkor csak npm run build
+            # ha a script már tartalmaz --configuration=... paramot, ne adjuk hozzá még egyszer
             if node -e "p=require('./package.json');process.exit((p.scripts&&p.scripts.build||'').includes('--configuration=')?0:1)"; then
               npm run build
             else
@@ -158,11 +154,10 @@ jobs:
           fi
 
       - name: Optional tests (best-effort)
-        if: steps.detect.outputs.present == 'true'
-        run: |
-          npm run test --if-present -- --watch=false --browsers=ChromeHeadless --no-sandbox || echo "Skipping Angular tests."
+        if: steps.present.outputs.present == 'true'
+        run: npm run test --if-present -- --watch=false --browsers=ChromeHeadless --no-sandbox || echo "Skipping Angular tests."
 
-  # ===================== MANUAL TOOL: ANGULAR 20 UPGRADE PR =====================
+  # =============== MANUAL TOOL: ANGULAR 20 UPGRADE PR ===============
   upgrade-angular20:
     name: Tool – Upgrade Angular to v20 (PR)
     if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -174,24 +169,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - name: Upgrade to Angular v20
         run: |
           npx -y @angular/cli@20 update @angular/core@20 @angular/cli@20 --force --allow-dirty
           npm i -D @angular-devkit/build-angular@^20
-          rm -f package-lock.json
-          npm i
-          if [ -f angular.json ]; then npm run build -- --configuration=production; fi
-
-      - name: Create PR
-        uses: peter-evans/create-pull-request@v6
-        with:
-          branch: chore/angular20
-          title: "chore(frontend): upgrade Angular to v20"
-          commit-message: "chore(frontend): upgrade Angular core/cli/build-angular to v20"
-          body: |
-            Automated Angular 20 upgrade:
-            - @angular/core & @angular/cli -> v20
-            - @angular-devkit/build-angular -> ^20
-            - Build verified
-          labels: dependencies, angular
+          rm -f package-loc
