@@ -181,8 +181,10 @@ jobs:
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
           
-          # Initial install to get a baseline
-          npm ci --legacy-peer-deps
+          # Start from a very clean state to avoid conflicts from a bad lock file
+          echo "Starting from a clean slate..."
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
 
           LATEST_MAJ=$(npm view @angular/core version | sed 's/\..*//')
           echo "Latest available major version is ${LATEST_MAJ}"
