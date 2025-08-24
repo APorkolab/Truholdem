@@ -11,9 +11,10 @@ import { Observable, catchError, throwError } from 'rxjs';
 import { Router } from '@angular/router';
 
 @Component({
-  selector: 'app-game-table',
-  templateUrl: './game-table.component.html',
-  styleUrls: ['./game-table.component.scss']
+    selector: 'app-game-table',
+    templateUrl: './game-table.component.html',
+    styleUrls: ['./game-table.component.scss'],
+    standalone: false
 })
 export class GameTableComponent implements OnInit {
   game: Game = {

@@ -10,9 +10,10 @@ interface PlayerInfo {
 }
 
 @Component({
-  selector: 'app-raise-input',
-  templateUrl: './raise-input.component.html',
-  styleUrls: ['./raise-input.component.scss']
+    selector: 'app-raise-input',
+    templateUrl: './raise-input.component.html',
+    styleUrls: ['./raise-input.component.scss'],
+    standalone: false
 })
 export class RaiseInputComponent implements OnInit {
   @Input() game!: Game;

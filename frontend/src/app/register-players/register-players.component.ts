@@ -11,9 +11,10 @@ export interface PlayerInfo {
 }
 
 @Component({
-  selector: 'app-register-players',
-  templateUrl: './register-players.component.html',
-  styleUrls: ['./register-players.component.scss']
+    selector: 'app-register-players',
+    templateUrl: './register-players.component.html',
+    styleUrls: ['./register-players.component.scss'],
+    standalone: false
 })
 export class RegisterPlayersComponent {
   maxBotPlayers = 3;
