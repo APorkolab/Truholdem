@@ -150,7 +150,10 @@ jobs:
       - name: Install deps (tolerant)
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
-          npm ci || npm ci --legacy-peer-deps
+          # Use 'npm install' instead of 'npm ci' to be more resilient
+          # to minor inconsistencies in package-lock.json. It will attempt 
+          # to resolve dependencies based on package.json.
+          npm install --legacy-peer-deps
       - name: Build (Angular or generic)
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
