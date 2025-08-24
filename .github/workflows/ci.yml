@@ -199,6 +199,10 @@ jobs:
           # Reinstall all dependencies from scratch
           npm install --legacy-peer-deps
 
+          # Run Angular migrations to fix code issues like standalone components
+          echo "Running Angular code migrations..."
+          npx ng update @angular/core --migrate-only --allow-dirty
+
       - name: Install deps (tolerant)
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
@@ -259,6 +263,11 @@ jobs:
           
           # Reinstall all dependencies from scratch
           npm install --legacy-peer-deps
+
+          # Run Angular migrations to fix code issues like standalone components
+          echo "Running Angular code migrations..."
+          npx ng update @angular/core --migrate-only --allow-dirty
+
           if [ -f angular.json ]; then npm run build -- --configuration=production; fi
       - name: Create PR
         uses: peter-evans/create-pull-request@v6
