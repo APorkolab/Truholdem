@@ -1,5 +1,11 @@
 # Truholdem v.1.3.0
 
+[![Build](https://img.shields.io/github/actions/workflow/status/APorkolab/Truholdem/ci.yml?branch=main)](../../actions)
+[![License](https://img.shields.io/badge/license-MIT-informational.svg)](LICENSE)
+[![Issues](https://img.shields.io/github/issues/APorkolab/Truholdem.svg)](../../issues)
+[![Live Demo](https://img.shields.io/badge/live-truholdem.porkolab.hu-success)](https://truholdem.porkolab.hu/)
+
+
 Truholdem is a sophisticated poker program designed to offer a comprehensive platform for learning, practicing, and simulating Texas Hold'em poker games. This README provides an in-depth overview of the project, installation instructions, usage guidelines, and contribution details.
 
 ## Project Overview
