@@ -184,16 +184,17 @@ jobs:
         if: ${{ steps.ngver.outputs.HAS_NG == 'yes' && steps.nglatest.outputs.LATEST_MAJ != '' && (fromJSON(steps.ngver.outputs.CORE_MAJ) < fromJSON(steps.nglatest.outputs.LATEST_MAJ)) }}
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
-          echo "Upgrading all Angular packages to @latest to avoid peer dependency conflicts..."
+          echo "Upgrading all Angular packages and key dependencies to @latest..."
           
           # Clean slate before upgrade
           rm -rf node_modules
           rm -f package-lock.json
 
-          # Upgrade all core dependencies at once using @latest tag
-          npm i @angular/animations@latest @angular/common@latest @angular/compiler@latest @angular/core@latest @angular/forms@latest @angular/platform-browser@latest @angular/platform-browser-dynamic@latest @angular/router@latest @angular/cli@latest --force
-          # Upgrade dev dependencies
-          npm i -D @angular/compiler-cli@latest @angular-devkit/build-angular@latest || true
+          # Upgrade all core dependencies at once using @latest tag, including zone.js
+          npm i @angular/animations@latest @angular/common@latest @angular/compiler@latest @angular/core@latest @angular/forms@latest @angular/platform-browser@latest @angular/platform-browser-dynamic@latest @angular/router@latest zone.js@latest --force
+          
+          # Upgrade dev dependencies, including cli, compiler-cli, build-angular, and typescript
+          npm i -D @angular/cli@latest @angular/compiler-cli@latest @angular-devkit/build-angular@latest typescript@latest || true
           
           # Reinstall all dependencies from scratch
           npm install --legacy-peer-deps
@@ -244,16 +245,17 @@ jobs:
       - name: Upgrade in detected frontend
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
-          echo "Upgrading all Angular packages to @latest to avoid peer dependency conflicts..."
+          echo "Upgrading all Angular packages and key dependencies to @latest..."
           
           # Clean slate before upgrade
           rm -rf node_modules
           rm -f package-lock.json
 
-          # Upgrade all core dependencies at once using @latest tag
-          npm i @angular/animations@latest @angular/common@latest @angular/compiler@latest @angular/core@latest @angular/forms@latest @angular/platform-browser@latest @angular/platform-browser-dynamic@latest @angular/router@latest @angular/cli@latest --force
-          # Upgrade dev dependencies
-          npm i -D @angular/compiler-cli@latest @angular-devkit/build-angular@latest || true
+          # Upgrade all core dependencies at once using @latest tag, including zone.js
+          npm i @angular/animations@latest @angular/common@latest @angular/compiler@latest @angular/core@latest @angular/forms@latest @angular/platform-browser@latest @angular/platform-browser-dynamic@latest @angular/router@latest zone.js@latest --force
+          
+          # Upgrade dev dependencies, including cli, compiler-cli, build-angular, and typescript
+          npm i -D @angular/cli@latest @angular/compiler-cli@latest @angular-devkit/build-angular@latest typescript@latest || true
           
           # Reinstall all dependencies from scratch
           npm install --legacy-peer-deps
