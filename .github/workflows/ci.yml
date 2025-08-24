@@ -174,13 +174,15 @@ jobs:
         if: ${{ steps.ngver.outputs.HAS_NG == 'yes' && (fromJSON(steps.ngver.outputs.CORE_MAJ) < 20 || fromJSON(steps.ngver.outputs.BUILD_MAJ) >= 20) }}
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
-          echo "Upgrading Angular to v20 using npm..."
-          # Use npm install to directly set versions, which is more robust than 'ng update'
-          npm i @angular/core@20 @angular/cli@20 --force
-          npm i -D @angular-devkit/build-angular@^20 || true
-          npm i -D @angular/build@^20 || true
+          echo "Upgrading all Angular packages to v20 to avoid peer dependency conflicts..."
+          # Upgrade all core dependencies at once
+          npm i @angular/animations@20 @angular/common@20 @angular/compiler@20 @angular/core@20 @angular/forms@20 @angular/platform-browser@20 @angular/platform-browser-dynamic@20 @angular/router@20 @angular/cli@20 --force
+          # Upgrade dev dependencies
+          npm i -D @angular/compiler-cli@^20 @angular-devkit/build-angular@^20 || true
+          
+          # Recreate lock file and install
           rm -f package-lock.json
-          npm ci || npm ci --legacy-peer-deps
+          npm ci --legacy-peer-deps
 
       - name: Install deps (tolerant)
         run: |
@@ -221,13 +223,15 @@ jobs:
       - name: Upgrade in detected frontend
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
-          echo "Upgrading Angular to v20 using npm..."
-          # Use npm install to directly set versions
-          npm i @angular/core@20 @angular/cli@20 --force
-          npm i -D @angular-devkit/build-angular@^20 || true
-          npm i -D @angular/build@^20 || true
+          echo "Upgrading all Angular packages to v20 to avoid peer dependency conflicts..."
+          # Upgrade all core dependencies at once
+          npm i @angular/animations@20 @angular/common@20 @angular/compiler@20 @angular/core@20 @angular/forms@20 @angular/platform-browser@20 @angular/platform-browser-dynamic@20 @angular/router@20 @angular/cli@20 --force
+          # Upgrade dev dependencies
+          npm i -D @angular/compiler-cli@^20 @angular-devkit/build-angular@^20 || true
+          
+          # Recreate lock file and install
           rm -f package-lock.json
-          npm ci
+          npm ci --legacy-peer-deps
           if [ -f angular.json ]; then npm run build -- --configuration=production; fi
       - name: Create PR
         uses: peter-evans/create-pull-request@v6
@@ -237,7 +241,7 @@ jobs:
           commit-message: "chore(frontend): upgrade Angular core/cli/build-angular to v20"
           body: |
             Automated Angular 20 upgrade in `${{ needs.detect-paths.outputs.FRONT_DIR }}`:
-            - @angular/core & @angular/cli -> v20
-            - @angular-devkit/build-angular / @angular/build -> ^20
+            - All @angular/* packages -> v20
+            - @angular-devkit/build-angular -> ^20
             - Build verified
           labels: dependencies, angular
