@@ -4,7 +4,7 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch: {} # kézi indítás a "Tool – Angular 20 upgrade PR" jobhoz
+  workflow_dispatch: {} # Manual trigger for the "Tool – Angular 20 upgrade PR" job
 
 permissions:
   contents: write
@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # =============== PATH DETECT (egy helyen keressünk mindent) ===============
+  # =============== PATH DETECT (Find everything in one place) ===============
   detect-paths:
     name: Detect project paths
     runs-on: ubuntu-latest
@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
       - id: out
         run: |
-          # --- Frontend keresés: preferáljuk a 'frontend/' gyökerét, különben bárhol angular.json ---
+          # --- Find frontend: prefer 'frontend/', otherwise any angular.json ---
           FRONT_DIR=""
           if [ -f frontend/package.json ]; then
             FRONT_DIR="frontend"
@@ -45,7 +45,7 @@ jobs:
             FRONT_IS_ANGULAR="$HAS_NG"
           fi
 
-          # --- Java backend keresés: prefer 'backend/', majd 'api/', majd bármelyik pom.xml ---
+          # --- Find Java backend: prefer 'backend/', then 'api/', then any pom.xml ---
           JAVA_DIR=""
           if [ -f backend/pom.xml ]; then
             JAVA_DIR="backend"
@@ -58,7 +58,7 @@ jobs:
             fi
           fi
 
-          # --- Node backend keresés: prefer 'backend/' vagy 'api/' package.json (ha ugyanott nincs pom.xml) ---
+          # --- Find Node backend: prefer 'backend/' or 'api/' with package.json (if no pom.xml exists there) ---
           NODE_DIR=""
           if [ -f backend/package.json ] && [ ! -f backend/pom.xml ]; then
             NODE_DIR="backend"
@@ -150,7 +150,7 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ needs.detect-paths.outputs.FRONT_DIR }}/package-lock.json
 
-      # Angular csak akkor, ha tényleg Angular-projekt a megtalált mappában
+      # Check for Angular and its version
       - id: ngver
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
@@ -169,28 +169,29 @@ jobs:
           echo "CORE_MAJ=$CORE_MAJ" >> $GITHUB_OUTPUT
           echo "BUILD_MAJ=$BUILD_MAJ" >> $GITHUB_OUTPUT
 
-      # Ha Angular és verzióütközés várható → automata upgrade v20-ra (csak Angularnál)
+      # If Angular and version mismatch -> auto-upgrade to v20
       - name: Auto-upgrade Angular to v20 (only if Angular)
         if: ${{ steps.ngver.outputs.HAS_NG == 'yes' && (fromJSON(steps.ngver.outputs.CORE_MAJ) < 20 || fromJSON(steps.ngver.outputs.BUILD_MAJ) >= 20) }}
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
-          echo "Upgrading Angular to v20 (core/cli/build-angular)…"
-          npx -y @angular/cli@20 update @angular/core@20 @angular/cli@20 --force --allow-dirty
+          echo "Upgrading Angular to v20 using npm..."
+          # Use npm install to directly set versions, which is more robust than 'ng update'
+          npm i @angular/core@20 @angular/cli@20 --force
           npm i -D @angular-devkit/build-angular@^20 || true
           npm i -D @angular/build@^20 || true
           rm -f package-lock.json
-          npm ci
+          npm ci || npm ci --legacy-peer-deps
 
-      - name: Install deps (toleráns)
+      - name: Install deps (tolerant)
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
           npm ci || npm ci --legacy-peer-deps
 
-      - name: Build (Angular vagy generikus)
+      - name: Build (Angular or generic)
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
           if [ -f angular.json ] && [ "${{ steps.ngver.outputs.HAS_NG }}" = "yes" ]; then
-            # ha a build script már tartalmaz --configuration=..., ne adjuk hozzá újra
+            # If the build script already contains --configuration=..., don't add it again
             if node -e "p=require('./package.json');process.exit((p.scripts&&p.scripts.build||'').includes('--configuration=')?0:1)"; then
               npm run build
             else
@@ -205,7 +206,7 @@ jobs:
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
           npm run test --if-present -- --watch=false --browsers=ChromeHeadless --no-sandbox || echo "Skipping tests."
 
-  # =============== TOOL: kézi Angular 20 upgrade PR ===============
+  # =============== TOOL: Manual Angular 20 upgrade PR ===============
   upgrade-angular20:
     name: Tool – Angular 20 upgrade PR
     needs: [detect-paths]
@@ -220,7 +221,9 @@ jobs:
       - name: Upgrade in detected frontend
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
-          npx -y @angular/cli@20 update @angular/core@20 @angular/cli@20 --force --allow-dirty
+          echo "Upgrading Angular to v20 using npm..."
+          # Use npm install to directly set versions
+          npm i @angular/core@20 @angular/cli@20 --force
           npm i -D @angular-devkit/build-angular@^20 || true
           npm i -D @angular/build@^20 || true
           rm -f package-lock.json
