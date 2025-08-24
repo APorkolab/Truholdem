@@ -186,13 +186,17 @@ jobs:
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
           LATEST_VER=${{ steps.nglatest.outputs.LATEST_VER }}
           echo "Upgrading all Angular packages to v$LATEST_VER to avoid peer dependency conflicts..."
+          
+          # Clean slate before upgrade
+          rm -rf node_modules
+          rm -f package-lock.json
+
           # Upgrade all core dependencies at once
           npm i @angular/animations@$LATEST_VER @angular/common@$LATEST_VER @angular/compiler@$LATEST_VER @angular/core@$LATEST_VER @angular/forms@$LATEST_VER @angular/platform-browser@$LATEST_VER @angular/platform-browser-dynamic@$LATEST_VER @angular/router@$LATEST_VER @angular/cli@$LATEST_VER --force
           # Upgrade dev dependencies
           npm i -D @angular/compiler-cli@^$LATEST_VER @angular-devkit/build-angular@^$LATEST_VER || true
           
-          # Recreate lock file and install
-          rm -f package-lock.json
+          # Reinstall all dependencies from scratch
           npm install --legacy-peer-deps
 
       - name: Install deps (tolerant)
@@ -243,13 +247,17 @@ jobs:
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
           LATEST_VER=${{ steps.nglatest.outputs.LATEST_VER }}
           echo "Upgrading all Angular packages to v$LATEST_VER to avoid peer dependency conflicts..."
+          
+          # Clean slate before upgrade
+          rm -rf node_modules
+          rm -f package-lock.json
+
           # Upgrade all core dependencies at once
           npm i @angular/animations@$LATEST_VER @angular/common@$LATEST_VER @angular/compiler@$LATEST_VER @angular/core@$LATEST_VER @angular/forms@$LATEST_VER @angular/platform-browser@$LATEST_VER @angular/platform-browser-dynamic@$LATEST_VER @angular/router@$LATEST_VER @angular/cli@$LATEST_VER --force
           # Upgrade dev dependencies
           npm i -D @angular/compiler-cli@^$LATEST_VER @angular-devkit/build-angular@^$LATEST_VER || true
           
-          # Recreate lock file and install
-          rm -f package-lock.json
+          # Reinstall all dependencies from scratch
           npm install --legacy-peer-deps
           if [ -f angular.json ]; then npm run build -- --configuration=production; fi
       - name: Create PR
