@@ -8,7 +8,6 @@ export interface Game {
 	phase: string;
 	currentBet: number;
 	playerActions: { [playerId: string]: boolean };
-	// Új mező hozzáadása
 	playersWhoHaveNotActed?: Player[];  // Opcionális mező, mivel néha hiányozhat
 }
 
