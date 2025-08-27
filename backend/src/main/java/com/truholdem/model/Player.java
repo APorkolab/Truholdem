@@ -1,24 +1,46 @@
 package com.truholdem.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@Entity
+@Table(name = "players")
 public class Player {
-    private String id;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private UUID id;
+
     private String name;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "player_hand", joinColumns = @JoinColumn(name = "player_id"))
+    @OrderColumn
     private List<Card> hand = new ArrayList<>();
+
     private int chips;
     private int betAmount;
     private boolean isFolded;
     private boolean isBot;
+    private boolean hasActed;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "game_id")
+    @JsonBackReference
+    private Game game;
 
     public Player(String name, int startingChips, boolean isBot) {
-        this.id = UUID.randomUUID().toString();
         this.name = name;
         this.chips = startingChips;
         this.isFolded = false;
         this.isBot = isBot;
+    }
+
+    public Player() {
+        // JPA requires a no-arg constructor
     }
 
     public void placeBet(int amount) {
@@ -41,8 +63,16 @@ public class Player {
         hand.add(card);
     }
 
-    public String getId() {
+    public UUID getId() {
         return id;
+    }
+
+    public Game getGame() {
+        return game;
+    }
+
+    public void setGame(Game game) {
+        this.game = game;
     }
 
     public String getName() {
@@ -69,7 +99,7 @@ public class Player {
         isFolded = folded;
     }
 
-    public void setId(String id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
@@ -99,5 +129,13 @@ public class Player {
 
     public void clearHand() {
         this.hand.clear();
+    }
+
+    public boolean hasActed() {
+        return hasActed;
+    }
+
+    public void setHasActed(boolean hasActed) {
+        this.hasActed = hasActed;
     }
 }
