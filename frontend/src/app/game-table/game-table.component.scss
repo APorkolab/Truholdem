@@ -3,9 +3,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: #006400;
+  background-color: #004d00; /* Fallback color */
+  background-image: radial-gradient(ellipse at center, #008000 0%, #004d00 100%);
   padding: 20px;
-  border-radius: 10px;
+  border-radius: 50%; /* Make it an oval/circle */
   position: relative;
   width: 100%;
   height: 100vh;
@@ -17,6 +18,28 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+
+  .player-info {
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    text-align: center;
+    margin-top: 10px;
+    min-width: 120px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+
+    span {
+      display: block;
+      font-size: 0.9rem;
+    }
+  }
+}
+
+.player.active-player .player-info {
+  box-shadow: 0 0 15px 5px #f0e68c;
+  transform: scale(1.05);
 }
 
 .left,
@@ -52,15 +75,66 @@
   flex-direction: row;
 }
 
-.card,
-.community-cards .card {
+.card {
   width: 4rem;
   height: 10rem;
-  border: 1px solid #000;
-  border-radius: 5px;
   margin: 0 5px;
-  background-color: #ffff;
+  perspective: 1000px;
+  background-color: transparent;
+  border: none;
+}
+
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.8s;
+  transform-style: preserve-3d;
+}
+
+.card.is-flipped .card-inner {
+  transform: rotateY(180deg);
+}
+
+.card-front, .card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden; /* Safari */
+  backface-visibility: hidden;
+  border-radius: 5px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.card-front {
+  background-color: #bbb;
+  color: black;
+  transform: rotateY(180deg);
+}
+
+.card-back {
+  background-color: #fff;
+}
+
+.card-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+}
+
+.community-cards .card {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: deal-in 0.5s ease-out forwards;
+}
+
+/* Staggering is now handled dynamically in the component's HTML */
+
+@keyframes deal-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .community-cards {
@@ -90,17 +164,22 @@
 .actions button {
   margin: 5px;
   padding: 10px 20px;
-  border-radius: 5px;
-  background-color: #d4af37;
-  color: #000;
-  border: none;
+  border-radius: 20px; /* More rounded */
+  background-image: linear-gradient(to bottom, #f0e68c, #d4af37); /* Khaki to gold gradient */
+  color: #333;
+  border: 1px solid #c8a436;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-weight: bold;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .actions button:hover {
-  background-color: #b29600;
+  background-image: linear-gradient(to bottom, #fff8dc, #e6c35c); /* Lighter hover */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  transform: translateY(-2px);
 }
 
 .modal {

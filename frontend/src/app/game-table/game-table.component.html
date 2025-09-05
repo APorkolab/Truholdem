@@ -1,45 +1,70 @@
 <div class="game-table">
-	<div *ngFor="let player of game?.players; let i = index" [ngClass]="{
-        'user': player.name && !player.name.startsWith('Bot'),
-        'left': player.name && player.name.startsWith('Bot') && (i % 3 === 1),
-        'top': player.name && player.name.startsWith('Bot') && (i % 3 === 2),
-        'right': player.name && player.name.startsWith('Bot') && (i % 3 === 0)
-      }" class="player">
-		<div *ngFor="let card of player.hand" class="card">
-			<img *ngIf="(!player.folded || player.chips <= 0) && (game?.phase === 'RIVER' || !player.name?.startsWith('Bot'))"
-				[src]="getCardImage(card)" [alt]="card.value + ' of ' + card.suit" class="card-image">
-			<img *ngIf="player.folded || player.chips > 0 && (game?.phase !== 'RIVER' && player.name?.startsWith('Bot'))"
-				src="../../assets/cards/back.png" alt="Card Back" class="card-image">
+
+	<!-- PLAYERS -->
+	<div *ngFor="let player of game.players; let i = index" class="player"
+		[class.user]="player.name && !player.name.startsWith('Bot')"
+		[class.left]="player.name && player.name.startsWith('Bot') && (i % 3 === 1)"
+		[class.top]="player.name && player.name.startsWith('Bot') && (i % 3 === 2)"
+		[class.right]="player.name && player.name.startsWith('Bot') && (i % 3 === 0)"
+		[class.active-player]="nonBotPlayer?.id === player.id">
+
+		<!-- PLAYER CARDS -->
+		<div *ngFor="let card of player.hand; let j = index" class="card" [style.animation-delay.s]="0.1 * j">
+			<div class="card-inner"
+				[class.is-flipped]="!player.folded && (game.phase === 'RIVER' || !(player.name && player.name.startsWith('Bot')))">
+				<div class="card-front">
+					<img [src]="getCardImage(card)" [alt]="card.value + ' of ' + card.suit" class="card-image" />
+				</div>
+				<div class="card-back">
+					<img src="../../assets/cards/back.png" alt="Card Back" class="card-image" />
+				</div>
+			</div>
 		</div>
 
+		<!-- PLAYER INFO -->
 		<div class="player-info">
-			<span>{{ player.name.replace('Bot', '') || 'Anonymous' }}</span>
+			<span>{{ (player.name || '').replace('Bot', '') || 'Anonymous' }}</span>
 			<span> Chips: {{ player.chips }}</span>
 			<span *ngIf="isFolded()"> Folded</span>
 		</div>
 	</div>
 
+	<!-- COMMUNITY CARDS -->
 	<div class="community-cards">
-		<div *ngFor="let card of game?.communityCards" class="card">
-			<img [src]="getCardImage(card)" [alt]="card.value + ' of ' + card.suit" class="card-image">
+		<div *ngFor="let card of game.communityCards; let k = index" class="card"
+			[style.animation-delay.s]="0.3 + (0.1 * k)">
+			<div class="card-inner is-flipped">
+				<div class="card-front">
+					<img [src]="getCardImage(card)" [alt]="card.value + ' of ' + card.suit" class="card-image" />
+				</div>
+				<div class="card-back">
+					<img src="../../assets/cards/back.png" alt="Card Back" class="card-image" />
+				</div>
+			</div>
 		</div>
 	</div>
 
+	<!-- ACTIONS -->
 	<div class="actions">
-		<!-- <button *ngIf="!isFolded() && game?.phase !== 'RIVER'" (click)="check()">Check</button> -->
-		<button *ngIf="!isFolded() && game?.phase !== 'RIVER'" (click)="fold()">Fold</button>
-		<app-raise-input *ngIf="!isFolded() && game?.phase !== 'RIVER'" [game]="game"
+		<!-- <button *ngIf="!isFolded() && game.phase !== 'RIVER'" (click)="check()">Check</button> -->
+		<button *ngIf="!isFolded() && game.phase !== 'RIVER'" (click)="fold()">Fold</button>
+
+		<app-raise-input *ngIf="!isFolded() && game.phase !== 'RIVER'" [game]="game"
 			(actionTaken)="handleRaiseAction()"></app-raise-input>
 
 		<div>Pots: {{ currentPot || 0 }}</div>
+
 		<div>
-			<!-- <button *ngIf="!isFolded() && game?.phase === 'PRE_FLOP'" (click)="dealFlop()">Deal Flop</button>
-			<button *ngIf="!isFolded() && game?.phase === 'FLOP'" (click)="dealTurn()">Deal Turn</button>
-			<button *ngIf="!isFolded() && game?.phase === 'TURN'" (click)="dealRiver()">Deal River</button> -->
-			<button *ngIf="!isFolded() && game?.phase === 'RIVER'" (click)="endGame(); openModal()">End Game</button>
+			<!--
+      <button *ngIf="!isFolded() && game.phase === 'PRE_FLOP'" (click)="dealFlop()">Deal Flop</button>
+      <button *ngIf="!isFolded() && game.phase === 'FLOP'" (click)="dealTurn()">Deal Turn</button>
+      <button *ngIf="!isFolded() && game.phase === 'TURN'" (click)="dealRiver()">Deal River</button>
+      -->
+			<button *ngIf="!isFolded() && game.phase === 'RIVER'" (click)="endGame(); openModal()">End Game</button>
 		</div>
 	</div>
 
+	<!-- MODAL -->
 	<div class="modal" *ngIf="showModal">
 		<div class="modal-dialog">
 			<div class="modal-content">
@@ -58,4 +83,5 @@
 			</div>
 		</div>
 	</div>
+
 </div>
