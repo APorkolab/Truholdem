@@ -158,7 +158,7 @@ jobs:
       - name: Run Frontend Tests
         run: |
           cd "${{ needs.detect-paths.outputs.FRONT_DIR }}"
-          npm run test -- --watch=false --browsers=ChromeHeadless --no-sandbox
+          npm run test -- --watch=false --browsers=ChromeHeadless
 
   # =============== TOOL: Manual Angular Full Upgrade PR ===============
   upgrade-angular-loop:
