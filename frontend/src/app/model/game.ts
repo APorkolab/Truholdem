@@ -1,7 +1,7 @@
 import { Card } from "./card";
 import { Player } from "./player";
 
-export interface Game {
+export class Game {
 	currentPot: number;
 	players: Player[];
 	communityCards: Card[];
@@ -9,5 +9,15 @@ export interface Game {
 	currentBet: number;
 	playerActions: { [playerId: string]: boolean };
 	playersWhoHaveNotActed?: Player[];  // Opcionális mező, mivel néha hiányozhat
+
+	constructor() {
+		this.currentPot = 0;
+		this.players = [];
+		this.communityCards = [];
+		this.phase = '';
+		this.currentBet = 0;
+		this.playerActions = {};
+		this.playersWhoHaveNotActed = [];
+	}
 }
 
