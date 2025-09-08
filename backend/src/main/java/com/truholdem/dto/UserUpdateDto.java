@@ -52,37 +52,3 @@ public class UserUpdateDto {
         this.avatarUrl = avatarUrl;
     }
 }
-
-
-// Change Password DTO
-class ChangePasswordRequestDto {
-
-    @Size(min = 1, message = "Current password is required")
-    private String currentPassword;
-
-    @Size(min = 8, max = 100, message = "New password must be between 8 and 100 characters")
-    private String newPassword;
-
-    public ChangePasswordRequestDto() {}
-
-    public ChangePasswordRequestDto(String currentPassword, String newPassword) {
-        this.currentPassword = currentPassword;
-        this.newPassword = newPassword;
-    }
-
-    public String getCurrentPassword() {
-        return currentPassword;
-    }
-
-    public void setCurrentPassword(String currentPassword) {
-        this.currentPassword = currentPassword;
-    }
-
-    public String getNewPassword() {
-        return newPassword;
-    }
-
-    public void setNewPassword(String newPassword) {
-        this.newPassword = newPassword;
-    }
-}

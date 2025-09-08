@@ -1,5 +1,6 @@
 package com.truholdem.dto;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +19,8 @@ public class UserProfileDto {
     private Instant lastLogin;
     private Instant createdAt;
     private List<String> roles;
+    private int totalGamesPlayed;
+    private BigDecimal totalWinnings;
 
     public UserProfileDto() {}
 
@@ -116,5 +119,21 @@ public class UserProfileDto {
 
     public void setRoles(List<String> roles) {
         this.roles = roles;
+    }
+
+    public int getTotalGamesPlayed() {
+        return totalGamesPlayed;
+    }
+
+    public void setTotalGamesPlayed(int totalGamesPlayed) {
+        this.totalGamesPlayed = totalGamesPlayed;
+    }
+
+    public BigDecimal getTotalWinnings() {
+        return totalWinnings;
+    }
+
+    public void setTotalWinnings(BigDecimal totalWinnings) {
+        this.totalWinnings = totalWinnings;
     }
 }
