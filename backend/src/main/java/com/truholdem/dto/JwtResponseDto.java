@@ -82,4 +82,13 @@ public class JwtResponseDto {
     public void setRoles(List<String> roles) {
         this.roles = roles;
     }
+
+    // Backward compatibility method for tests
+    public void setExpiresIn(long expiresInSeconds) {
+        this.expiresAt = Instant.now().plusSeconds(expiresInSeconds);
+    }
+
+    public long getExpiresIn() {
+        return expiresAt != null ? expiresAt.getEpochSecond() - Instant.now().getEpochSecond() : 0;
+    }
 }

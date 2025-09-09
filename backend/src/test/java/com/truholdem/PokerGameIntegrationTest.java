@@ -14,6 +14,8 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
+import com.truholdem.config.TestSecurityConfig;
+import org.springframework.context.annotation.Import;
 
 import jakarta.transaction.Transactional;
 import java.util.Arrays;
@@ -25,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+@Import(TestSecurityConfig.class)
 @Transactional
 public class PokerGameIntegrationTest {
 
@@ -116,13 +119,13 @@ public class PokerGameIntegrationTest {
         UUID player2Id = createdGame.getPlayers().get(1).getId();
 
         // Act 1: Player 1 calls the big blind
-        PlayerActionRequest callAction = new PlayerActionRequest(PlayerAction.CALL, 0);
+        PlayerActionRequest callAction = new PlayerActionRequest(player1Id.toString(), PlayerAction.CALL, 0);
         String callUrl = String.format("/api/poker/game/%s/player/%s/action", gameId, player1Id);
         ResponseEntity<Game> callResponse = restTemplate.postForEntity(callUrl, callAction, Game.class);
         assertEquals(HttpStatus.OK, callResponse.getStatusCode());
 
         // Now it's Player 2's turn. They can check because their bet matches the current bet.
-        PlayerActionRequest checkAction = new PlayerActionRequest(PlayerAction.CHECK, 0);
+        PlayerActionRequest checkAction = new PlayerActionRequest(player2Id.toString(), PlayerAction.CHECK, 0);
 
         // Act 2: Player 2 checks
         String checkUrl = String.format("/api/poker/game/%s/player/%s/action", gameId, player2Id);
@@ -175,7 +178,7 @@ public class PokerGameIntegrationTest {
         // In a 3-player game, player 3 (index 2) is the first to act after blinds.
         UUID player3Id = createdGame.getPlayers().get(2).getId();
 
-        PlayerActionRequest callAction = new PlayerActionRequest(PlayerAction.CALL, 0);
+        PlayerActionRequest callAction = new PlayerActionRequest(player3Id.toString(), PlayerAction.CALL, 0);
 
         // Act
         String url = String.format("/api/poker/game/%s/player/%s/action", gameId, player3Id);

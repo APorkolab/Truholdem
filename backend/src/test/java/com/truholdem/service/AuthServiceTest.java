@@ -84,7 +84,7 @@ class AuthServiceTest {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
         when(jwtUtil.generateToken(testUser)).thenReturn("jwt-token-123");
-        when(jwtUtil.getTokenExpiration()).thenReturn(3600L);
+        when(jwtUtil.getTokenExpiration()).thenReturn(Instant.now().plusSeconds(3600));
         when(refreshTokenService.createRefreshToken(testUser)).thenReturn(testRefreshToken);
 
         // When
@@ -153,7 +153,7 @@ class AuthServiceTest {
         when(refreshTokenService.verifyExpiration(testRefreshToken))
                 .thenReturn(testRefreshToken);
         when(jwtUtil.generateToken(testUser)).thenReturn("new-jwt-token");
-        when(jwtUtil.getTokenExpiration()).thenReturn(3600L);
+        when(jwtUtil.getTokenExpiration()).thenReturn(Instant.now().plusSeconds(3600));
 
         // When
         JwtResponseDto result = authService.refreshToken(refreshRequest);
