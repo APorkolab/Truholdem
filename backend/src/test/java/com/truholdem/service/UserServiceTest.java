@@ -21,9 +21,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -71,7 +69,9 @@ class UserServiceTest {
         testUser.setLastName("Doe");
         testUser.setActive(true);
         testUser.setEmailVerified(false);
-        testUser.setRoles(Set.of(userRole));
+        Set<Role> mutableRoles = new HashSet<>();
+        mutableRoles.add(userRole);
+        testUser.setRoles(mutableRoles);
         testUser.setCreatedAt(Instant.now());
 
         registrationDto = new UserRegistrationDto();

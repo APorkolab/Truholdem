@@ -71,6 +71,9 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "User not authenticated")
     })
     public ResponseEntity<MessageResponseDto> logout(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(new MessageResponseDto("User not authenticated"));
+        }
         logger.info("Logout request for user: {}", userDetails.getUsername());
         MessageResponseDto response = authService.logout(userDetails.getUsername());
         return ResponseEntity.ok(response);
@@ -110,6 +113,9 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Token is invalid or expired")
     })
     public ResponseEntity<MessageResponseDto> validateToken(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(new MessageResponseDto("Token is invalid or expired"));
+        }
         logger.debug("Token validation request for user: {}", userDetails.getUsername());
         return ResponseEntity.ok(new MessageResponseDto("Token is valid"));
     }
