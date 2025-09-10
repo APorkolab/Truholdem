@@ -28,7 +28,7 @@ RUN mvn dependency:go-offline -B
 COPY backend/src ./src
 
 # Copy frontend build to backend static resources
-COPY --from=frontend-builder /app/frontend/dist/frontend/ ./src/main/resources/static/
+COPY --from=frontend-builder /app/frontend/dist/texas-holdem-frontend/ ./src/main/resources/static/
 
 # Build backend
 RUN mvn clean package -DskipTests
