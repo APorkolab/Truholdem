@@ -1,6 +1,7 @@
 package com.truholdem.service;
 
 import com.truholdem.model.*;
+import com.truholdem.repository.GameRepository;
 import org.springframework.stereotype.Service;
 import com.truholdem.model.GamePhase;
 

@@ -1,4 +1,4 @@
-package com.truholdem.service;
+package com.truholdem.repository;
 
 import com.truholdem.model.Game;
 import org.springframework.data.jpa.repository.JpaRepository;

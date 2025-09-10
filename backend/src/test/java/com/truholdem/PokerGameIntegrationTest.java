@@ -5,7 +5,7 @@ import com.truholdem.dto.PlayerActionRequest;
 import com.truholdem.model.Game;
 import com.truholdem.model.PlayerAction;
 import com.truholdem.model.PlayerInfo;
-import com.truholdem.service.GameRepository;
+import com.truholdem.repository.GameRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +17,6 @@ import org.springframework.test.context.ActiveProfiles;
 import com.truholdem.config.TestSecurityConfig;
 import org.springframework.context.annotation.Import;
 
-import jakarta.transaction.Transactional;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -28,7 +27,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @Import(TestSecurityConfig.class)
-@Transactional
 public class PokerGameIntegrationTest {
 
     @Autowired

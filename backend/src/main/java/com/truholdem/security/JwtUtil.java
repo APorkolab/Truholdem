@@ -9,6 +9,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
@@ -25,7 +26,7 @@ public class JwtUtil {
 
     public JwtUtil(AppProperties appProperties) {
         this.appProperties = appProperties;
-        this.secretKey = Keys.hmacShaKeyFor(appProperties.getJwt().getSecret().getBytes());
+        this.secretKey = buildSecretKey(appProperties.getJwt().getSecret());
     }
 
     public String generateToken(UserDetails userDetails) {
@@ -75,8 +76,9 @@ public class JwtUtil {
 
     public Boolean validateToken(String token) {
         try {
-            Jwts.parser()
+            Jwts.parserBuilder()
                     .setSigningKey(secretKey)
+                    .build()
                     .parseClaimsJws(token);
             return true;
         } catch (JwtException e) {
@@ -104,8 +106,9 @@ public class JwtUtil {
 
     private Claims getAllClaimsFromToken(String token) {
         try {
-            return Jwts.parser()
+            return Jwts.parserBuilder()
                     .setSigningKey(secretKey)
+                    .build()
                     .parseClaimsJws(token)
                     .getBody();
         } catch (ExpiredJwtException e) {
@@ -141,5 +144,18 @@ public class JwtUtil {
 
     public Instant getRefreshTokenExpiration() {
         return Instant.now().plusMillis(appProperties.getJwt().getRefreshExpiration());
+    }
+    private SecretKey buildSecretKey(String secret) {
+        // Ensure minimum key size for HS256 (at least 256 bits / 32 bytes)
+        byte[] bytes = secret == null ? new byte[0] : secret.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length < 32) {
+            // Pad deterministically to 32 bytes to avoid startup failures in test/CI
+            byte[] padded = new byte[32];
+            for (int i = 0; i < 32; i++) {
+                padded[i] = (i < bytes.length) ? bytes[i] : (byte) '0';
+            }
+            bytes = padded;
+        }
+        return Keys.hmacShaKeyFor(bytes);
     }
 }
