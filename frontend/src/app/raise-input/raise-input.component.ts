@@ -1,7 +1,9 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
 import { Game } from '../model/game';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Player } from '../model/player';
+import { NgIf } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 interface PlayerInfo {
   name: string;
@@ -13,9 +15,11 @@ interface PlayerInfo {
     selector: 'app-raise-input',
     templateUrl: './raise-input.component.html',
     styleUrls: ['./raise-input.component.scss'],
-    standalone: false
+    imports: [NgIf, FormsModule]
 })
 export class RaiseInputComponent implements OnInit {
+  private http = inject(HttpClient);
+
   @Input() game!: Game;
   @Output() actionTaken = new EventEmitter<void>();
 
@@ -25,11 +29,13 @@ export class RaiseInputComponent implements OnInit {
   minRaiseAmount = 0;
   suggestedRaiseAmount = 0;
   currentPlayer: Player | undefined;
-  currentBet: number = 0;
+  currentBet = 0;
 
   players: PlayerInfo[] = [];
 
-  constructor(private http: HttpClient) { }
+  constructor() { 
+    // Component initialization handled in ngOnInit
+  }
 
   async ngOnInit(): Promise<void> {
     await this.getGameStatus();
@@ -83,7 +89,7 @@ export class RaiseInputComponent implements OnInit {
       };
 
       try {
-        const response = await this.http.post('http://localhost:8080/api/poker/bet', body, { headers }).toPromise();
+        await this.http.post('http://localhost:8080/api/poker/bet', body, { headers }).toPromise();
         this.getGameStatus();
         this.actionTaken.emit();
       } catch (error) {

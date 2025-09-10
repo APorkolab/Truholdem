@@ -5,6 +5,11 @@
     [class]="'notification--' + error.type"
     [@slideInOut]
     (click)="dismissError(error.id)"
+    (keyup.enter)="dismissError(error.id)"
+    (keyup.space)="dismissError(error.id)"
+    tabindex="0"
+    role="button"
+    [attr.aria-label]="'Dismiss ' + error.type + ' notification: ' + error.message"
   >
     <div class="notification__icon">
       <i [class]="getIconClass(error.type)"></i>

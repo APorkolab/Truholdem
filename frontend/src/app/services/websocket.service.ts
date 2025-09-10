@@ -1,10 +1,10 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { AuthService } from './auth.service';
 import { Game } from '../model/game';
 
-declare var SockJS: any;
-declare var Stomp: any;
+declare const SockJS: (url: string) => unknown;
+declare const Stomp: { over: (socket: unknown) => unknown };
 
 export interface GameUpdateMessage {
   type: string;
@@ -23,9 +23,11 @@ export interface PlayerActionMessage {
   providedIn: 'root'
 })
 export class WebSocketService {
+  private readonly authService = inject(AuthService);
+  
   private readonly WEBSOCKET_URL = 'http://localhost:8080/ws';
   
-  private stompClient: any;
+  private stompClient: unknown;
   private connected = false;
   private gameId: string | null = null;
 
@@ -38,7 +40,7 @@ export class WebSocketService {
   private errorSubject = new Subject<string>();
   public errors$ = this.errorSubject.asObservable();
 
-  constructor(private authService: AuthService) {
+  constructor() {
     // Auto-connect when authenticated
     this.authService.isAuthenticated$.subscribe(isAuth => {
       if (isAuth && !this.connected) {
@@ -70,12 +72,12 @@ export class WebSocketService {
       };
 
       this.stompClient.connect(headers, 
-        (frame: any) => {
+        () => {
           console.log('WebSocket connected:', frame);
           this.connected = true;
           this.connectionStatusSubject.next(true);
         },
-        (error: any) => {
+        (error: unknown) => {
           console.error('WebSocket connection error:', error);
           this.handleConnectionError(error);
         }
@@ -97,7 +99,7 @@ export class WebSocketService {
         }
       };
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to create WebSocket connection:', error);
       this.handleConnectionError(error);
     }
@@ -129,23 +131,23 @@ export class WebSocketService {
     this.gameId = gameId;
 
     // Subscribe to game updates
-    this.stompClient.subscribe(`/topic/game/${gameId}`, (message: any) => {
+    this.stompClient.subscribe(`/topic/game/${gameId}`, (message: { body: string }) => {
       try {
         const gameUpdate: GameUpdateMessage = JSON.parse(message.body);
         this.gameUpdatesSubject.next(gameUpdate);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error parsing game update message:', error);
         this.errorSubject.next('Failed to parse game update');
       }
     });
 
     // Subscribe to user-specific messages
-    this.stompClient.subscribe('/user/queue/messages', (message: any) => {
+    this.stompClient.subscribe('/user/queue/messages', (message: { body: string }) => {
       try {
         const userMessage = JSON.parse(message.body);
         console.log('Received personal message:', userMessage);
         // Handle personal messages (notifications, errors, etc.)
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error parsing personal message:', error);
       }
     });
@@ -174,7 +176,7 @@ export class WebSocketService {
         JSON.stringify(action)
       );
       console.log('Player action sent:', action);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to send player action:', error);
       this.errorSubject.next('Failed to send player action');
     }
@@ -193,7 +195,7 @@ export class WebSocketService {
         JSON.stringify(playerName)
       );
       console.log('Joined game:', this.gameId);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to join game:', error);
       this.errorSubject.next('Failed to join game');
     }
@@ -211,20 +213,20 @@ export class WebSocketService {
         JSON.stringify(playerName)
       );
       console.log('Left game:', this.gameId);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to leave game:', error);
     } finally {
       this.unsubscribeFromGame();
     }
   }
 
-  private handleConnectionError(error: any): void {
+  private handleConnectionError(error: unknown): void {
     this.connected = false;
     this.connectionStatusSubject.next(false);
     
     let errorMessage = 'WebSocket connection failed';
-    if (error && error.message) {
-      errorMessage += ': ' + error.message;
+    if (error && typeof error === 'object' && error !== null && 'message' in error) {
+      errorMessage += ': ' + (error as { message: string }).message;
     }
     
     this.errorSubject.next(errorMessage);

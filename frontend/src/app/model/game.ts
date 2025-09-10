@@ -7,7 +7,7 @@ export class Game {
 	communityCards: Card[];
 	phase: string;
 	currentBet: number;
-	playerActions: { [playerId: string]: boolean };
+	playerActions: Record<string, boolean>;
 	playersWhoHaveNotActed?: Player[];  // Opcionális mező, mivel néha hiányozhat
 
 	constructor() {

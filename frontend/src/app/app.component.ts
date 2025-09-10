@@ -1,20 +1,26 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { PlayerInfo } from './register-players/register-players.component';
 import { PlayerService } from './services/player.service';
 import { Router } from '@angular/router';
+import { RegisterPlayersComponent } from './register-players/register-players.component';
+import { GameTableComponent } from './game-table/game-table.component';
 
 @Component({
     selector: 'app-root',
     templateUrl: './app.component.html',
     styleUrls: ['./app.component.scss'],
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, RegisterPlayersComponent, GameTableComponent]
 })
 export class AppComponent implements OnInit {
+  private playerService = inject(PlayerService);
+  private router = inject(Router);
+
   title = 'texas-holdem-frontend';
   registeredPlayers: PlayerInfo[] = [];
   gameStarted = false;
 
-  constructor(private playerService: PlayerService, private router: Router) { }
 
   ngOnInit(): void {
     // Feliratkozunk a PlayerService változásaira

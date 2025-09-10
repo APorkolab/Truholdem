@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { PlayerService } from '../services/player.service';
 import { Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { FormsModule } from '@angular/forms';
+import { NgFor } from '@angular/common';
 
 export interface PlayerInfo {
   name: string;
@@ -14,9 +15,13 @@ export interface PlayerInfo {
     selector: 'app-register-players',
     templateUrl: './register-players.component.html',
     styleUrls: ['./register-players.component.scss'],
-    standalone: false
+    imports: [FormsModule, NgFor]
 })
 export class RegisterPlayersComponent {
+  private http = inject(HttpClient);
+  private playerService = inject(PlayerService);
+  private router = inject(Router);
+
   maxBotPlayers = 3;
   maxHumanPlayers = 1;
   players: PlayerInfo[] = [
@@ -26,7 +31,9 @@ export class RegisterPlayersComponent {
     { name: this.generateRandomName(), startingChips: 1000, isBot: true }
   ];
 
-  constructor(private http: HttpClient, private playerService: PlayerService, private router: Router) { }
+  constructor() { 
+    // Component initialization with default players
+  }
 
   // Új játékos hozzáadása (bot vagy nem bot)
   addPlayer(): void {
@@ -73,8 +80,8 @@ export class RegisterPlayersComponent {
   }
 
   registerPlayers(): void {
-    this.http.post<any>('http://localhost:8080/api/poker/start', this.players).subscribe({
-      next: (response: any) => {
+    this.http.post<{ players: { id: string; name: string }[] }>('http://localhost:8080/api/poker/start', this.players).subscribe({
+      next: (response: { players: { id: string; name: string }[] }) => {
         if (response && response.players && Array.isArray(response.players)) {
           this.changePlayerNames(response.players);
         } else {
@@ -89,7 +96,7 @@ export class RegisterPlayersComponent {
     });
   }
 
-  changePlayerNames(serverPlayers: any[]): void {
+  changePlayerNames(serverPlayers: { id: string; name: string }[]): void {
     const changePlayerNameRecursively = (index: number) => {
       if (index >= serverPlayers.length) {
         // Minden névváltoztatás sikeres volt, most mentjük a játékosokat és navigálunk

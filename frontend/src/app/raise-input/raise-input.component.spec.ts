@@ -8,9 +8,8 @@ describe('RaiseInputComponent', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      declarations: [RaiseInputComponent]
-    });
+    imports: [HttpClientTestingModule, RaiseInputComponent]
+});
     fixture = TestBed.createComponent(RaiseInputComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();

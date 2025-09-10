@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError, BehaviorSubject } from 'rxjs';
 import { catchError, filter, take, switchMap } from 'rxjs/operators';
@@ -7,15 +7,13 @@ import { ErrorHandlerService } from '../services/error-handler.service';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
+  private authService = inject(AuthService);
+  private errorHandler = inject(ErrorHandlerService);
+  
   private isRefreshing = false;
-  private refreshTokenSubject: BehaviorSubject<any> = new BehaviorSubject<any>(null);
+  private refreshTokenSubject: BehaviorSubject<string | null> = new BehaviorSubject<string | null>(null);
 
-  constructor(
-    private authService: AuthService,
-    private errorHandler: ErrorHandlerService
-  ) {}
-
-  intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+  intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     // Add auth header if we have a token
     const authRequest = this.addAuthHeader(request);
 
@@ -33,7 +31,7 @@ export class AuthInterceptor implements HttpInterceptor {
     );
   }
 
-  private addAuthHeader(request: HttpRequest<any>): HttpRequest<any> {
+  private addAuthHeader(request: HttpRequest<unknown>): HttpRequest<unknown> {
     const token = this.authService.getToken();
     
     if (token && !request.headers.has('Authorization')) {
@@ -47,13 +45,13 @@ export class AuthInterceptor implements HttpInterceptor {
     return request;
   }
 
-  private handle401Error(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+  private handle401Error(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     if (!this.isRefreshing) {
       this.isRefreshing = true;
       this.refreshTokenSubject.next(null);
 
       return this.authService.refreshToken().pipe(
-        switchMap((response: any) => {
+        switchMap((response: { accessToken: string }) => {
           this.isRefreshing = false;
           this.refreshTokenSubject.next(response.accessToken);
           

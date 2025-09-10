@@ -9,9 +9,8 @@ describe('GameTableComponent', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      declarations: [GameTableComponent, RaiseInputComponent]
-    });
+    imports: [HttpClientTestingModule, GameTableComponent, RaiseInputComponent]
+});
     fixture = TestBed.createComponent(GameTableComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();

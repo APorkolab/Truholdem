@@ -12,20 +12,19 @@ import { RaiseInputComponent } from './raise-input/raise-input.component';
 
 
 @NgModule({
-  declarations: [
-    AppComponent,
-    RegisterPlayersComponent,
-    GameTableComponent,
-    RaiseInputComponent
-  ],
-  imports: [
-    FormsModule,
-    BrowserModule,
-    BrowserAnimationsModule,
-    AppRoutingModule,
-    HttpClientModule
-  ],
-  providers: [],
-  bootstrap: [AppComponent]
+    declarations: [],
+    imports: [
+        AppComponent,
+        FormsModule,
+        BrowserModule,
+        BrowserAnimationsModule,
+        AppRoutingModule,
+        HttpClientModule,
+        RegisterPlayersComponent,
+        GameTableComponent,
+        RaiseInputComponent
+    ],
+    providers: [],
+    bootstrap: [AppComponent]
 })
 export class AppModule { }

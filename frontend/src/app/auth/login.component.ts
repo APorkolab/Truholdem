@@ -1,4 +1,4 @@
-import { Component, OnInit, EventEmitter, Output } from '@angular/core';
+import { Component, OnInit, EventEmitter, Output, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService, LoginRequest } from '../services/auth.service';
@@ -12,16 +12,16 @@ import { ErrorHandlerService } from '../services/error-handler.service';
 export class LoginComponent implements OnInit {
   @Output() switchMode = new EventEmitter<string>();
   
+  private fb = inject(FormBuilder);
+  private authService = inject(AuthService);
+  private errorHandler = inject(ErrorHandlerService);
+  private router = inject(Router);
+  
   loginForm: FormGroup;
   isLoading = false;
   showPassword = false;
 
-  constructor(
-    private fb: FormBuilder,
-    private authService: AuthService,
-    private errorHandler: ErrorHandlerService,
-    private router: Router
-  ) {
+  constructor() {
     this.loginForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3)]],
       password: ['', [Validators.required, Validators.minLength(6)]],

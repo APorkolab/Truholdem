@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { trigger, state, style, transition, animate } from '@angular/animations';
+import { trigger, style, transition, animate } from '@angular/animations';
 import { ErrorHandlerService, AppError } from '../../services/error-handler.service';
 
 @Component({
@@ -42,28 +42,31 @@ import { ErrorHandlerService, AppError } from '../../services/error-handler.serv
   ]
 })
 export class NotificationComponent implements OnInit {
+  private errorHandler = inject(ErrorHandlerService);
+  
   errors$: Observable<AppError[]>;
 
-  private iconMap: { [key: string]: string } = {
+  private iconMap: Record<string, string> = {
     'error': 'fas fa-exclamation-circle',
     'warning': 'fas fa-exclamation-triangle',
     'info': 'fas fa-info-circle',
     'success': 'fas fa-check-circle'
   };
 
-  private autoDismissTimeMap: { [key: string]: number } = {
+  private autoDismissTimeMap: Record<string, number> = {
     'error': 0, // No auto-dismiss
     'warning': 0, // No auto-dismiss
     'info': 5000, // 5 seconds
     'success': 3000 // 3 seconds
   };
 
-  constructor(private errorHandler: ErrorHandlerService) {
+  constructor() {
     this.errors$ = this.errorHandler.errors$;
   }
 
   ngOnInit(): void {
-    // Component initialization
+    // Subscribe to errors and initialize component
+    this.errors$ = this.errorHandler.errors$;
   }
 
   dismissError(errorId: string): void {

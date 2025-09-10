@@ -9,9 +9,8 @@ describe('RegisterPlayersComponent', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule, FormsModule],
-      declarations: [RegisterPlayersComponent]
-    });
+    imports: [HttpClientTestingModule, FormsModule, RegisterPlayersComponent]
+});
     fixture = TestBed.createComponent(RegisterPlayersComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();

@@ -1,42 +1,49 @@
 import { RaiseInputComponent } from './../raise-input/raise-input.component';
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Game } from '../model/game';
 import { Player } from '../model/player';
 import { Card } from '../model/card';
 import { PlayerService } from '../services/player.service';
 import { PlayerInfo } from '../register-players/register-players.component';
-import { forkJoin } from 'rxjs';
 import { Observable, catchError, throwError } from 'rxjs';
 import { Router } from '@angular/router';
+import { NgFor, NgIf } from '@angular/common';
+import { RaiseInputComponent as RaiseInputComponent_1 } from '../raise-input/raise-input.component';
 
 @Component({
     selector: 'app-game-table',
     templateUrl: './game-table.component.html',
     styleUrls: ['./game-table.component.scss'],
-    standalone: false
+    imports: [NgFor, NgIf, RaiseInputComponent_1]
 })
 export class GameTableComponent implements OnInit {
+  private http = inject(HttpClient);
+  private playerService = inject(PlayerService);
+  private router = inject(Router);
+
   game: Game = {
     currentPot: 0, players: [], communityCards: [], phase: 'PRE_FLOP',
     currentBet: 0,
     playerActions: {}
   };
-  raiseAmount: number = 0;
-  playerChips: number = 0;
+  raiseAmount = 0;
+  playerChips = 0;
   nonBotPlayer: Player | undefined;
-  currentNonBotPlayerId: string = '';
-  showModal: boolean = false;
-  gameResultMessage: string = '';
-  playerActionTaken: boolean = false;
+  currentNonBotPlayerId = '';
+  showModal = false;
+  gameResultMessage = '';
+  playerActionTaken = false;
   currentPot = 0;
-  playerActions: Map<string, boolean> = new Map();
+  playerActions = new Map<string, boolean>();
   players: PlayerInfo[] = [];
 
   @ViewChild(RaiseInputComponent) raiseInputComponent!: RaiseInputComponent;
   @ViewChild('raiseModal') raiseModal!: ElementRef;
 
-  constructor(private http: HttpClient, private playerService: PlayerService, private router: Router) { }
+  constructor() { 
+    // Component initialization handled in ngOnInit
+  }
 
   ngOnInit(): void {
     this.players = this.playerService.getPlayers();
@@ -50,8 +57,8 @@ export class GameTableComponent implements OnInit {
   }
 
   getGameStatus(): void {
-    this.http.get<any>('http://localhost:8080/api/poker/status').subscribe({
-      next: (data: any) => {
+    this.http.get<Game>('http://localhost:8080/api/poker/status').subscribe({
+      next: (data: Game) => {
         if (Array.isArray(data)) {
           this.updateGameStatus({ players: data });
         } else if (data && data.players) {
@@ -158,7 +165,7 @@ export class GameTableComponent implements OnInit {
     });
   }
 
-  sendPhaseRequest(phase: string): Observable<any> {
+  sendPhaseRequest(phase: string): Observable<string> {
     return this.http.get(`http://localhost:8080/api/poker/${phase}`, { responseType: 'text' }).pipe(
       catchError((error) => {
         console.error(`Error during ${phase} request:`, error);
@@ -169,7 +176,7 @@ export class GameTableComponent implements OnInit {
 
   endGame(): void {
     this.http.get('http://localhost:8080/api/poker/end', { responseType: 'json' }).subscribe({
-      next: (response: any) => {
+      next: (response: {message?: string}) => {
         if (response && response.message) {
           const winnerMessage = response.message;
           const winnerName = winnerMessage.split(': ')[1];
@@ -293,7 +300,6 @@ export class GameTableComponent implements OnInit {
 
   allIn(): void {
     if (this.nonBotPlayer) {
-      const params = new HttpParams().set('playerId', this.nonBotPlayer.id);
       this.http.post('http://localhost:8080/api/poker/bet', { playerId: this.nonBotPlayer.id, amount: this.nonBotPlayer.chips }, { responseType: 'text' }).subscribe({
         next: () => {
           this.playerActionTaken = true;
@@ -444,7 +450,7 @@ export class GameTableComponent implements OnInit {
 
   performBotAction(botId: string): void {
     this.http.post(`http://localhost:8080/api/poker/bot-action/${botId}`, {}).subscribe({
-      next: (response: any) => {
+      next: (response: {message?: string}) => {
         console.log('Bot cselekvés sikeres:', response.message);
         this.getGameStatus();
         this.checkBotActions();

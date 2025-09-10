@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 
 export interface AppError {
   id: string;
@@ -19,7 +19,9 @@ export class ErrorHandlerService {
 
   private maxErrors = 10; // Maximum number of errors to keep in memory
 
-  constructor() {}
+  constructor() {
+    // Initialize error handler service
+  }
 
   // Add error methods
   addError(message: string, details?: string): void {
@@ -39,7 +41,7 @@ export class ErrorHandlerService {
   }
 
   // Handle HTTP errors
-  handleHttpError(error: any): void {
+  handleHttpError(error: { error?: { message?: string; details?: string } | string; message?: string; status?: number }): void {
     let message = 'An unexpected error occurred';
     let details = '';
 
@@ -63,7 +65,7 @@ export class ErrorHandlerService {
   }
 
   // Handle validation errors
-  handleValidationErrors(errors: { [key: string]: string }): void {
+  handleValidationErrors(errors: Record<string, string>): void {
     Object.entries(errors).forEach(([field, message]) => {
       this.addWarning(`${field}: ${message}`);
     });
@@ -81,7 +83,7 @@ export class ErrorHandlerService {
 
   // Handle game errors
   handleGameError(message: string, details?: string): void {
-    this.addError('Game Error', message);
+    this.addError('Game Error', details ? `${message}: ${details}` : message);
   }
 
   // Dismiss specific error
@@ -116,7 +118,7 @@ export class ErrorHandlerService {
     type: AppError['type'], 
     message: string, 
     details?: string, 
-    dismissible: boolean = true
+    dismissible = true
   ): void {
     const error: AppError = {
       id: this.generateId(),

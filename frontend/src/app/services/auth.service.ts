@@ -1,7 +1,7 @@
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, throwError, timer } from 'rxjs';
-import { catchError, map, tap } from 'rxjs/operators';
+import { catchError, tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 
 export interface User {
@@ -42,6 +42,9 @@ export interface AuthResponse {
   providedIn: 'root'
 })
 export class AuthService {
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
+  
   private readonly API_URL = 'http://localhost:8080/api/auth';
   private readonly TOKEN_KEY = 'access_token';
   private readonly REFRESH_TOKEN_KEY = 'refresh_token';
@@ -53,7 +56,7 @@ export class AuthService {
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
 
-  constructor(private http: HttpClient, private router: Router) {
+  constructor() {
     this.initializeAuthState();
     this.startTokenRefreshTimer();
   }
@@ -78,14 +81,14 @@ export class AuthService {
       );
   }
 
-  register(userData: RegisterRequest): Observable<any> {
+  register(userData: RegisterRequest): Observable<{ message: string }> {
     return this.http.post(`${this.API_URL}/register`, userData)
       .pipe(
         catchError(this.handleError)
       );
   }
 
-  logout(): Observable<any> {
+  logout(): Observable<{ message: string }> {
     return this.http.post(`${this.API_URL}/logout`, {})
       .pipe(
         tap(() => {
@@ -118,7 +121,7 @@ export class AuthService {
       );
   }
 
-  changePassword(currentPassword: string, newPassword: string): Observable<any> {
+  changePassword(currentPassword: string, newPassword: string): Observable<{ message: string }> {
     const body = { currentPassword, newPassword };
     return this.http.post(`${this.API_URL}/change-password`, body)
       .pipe(
@@ -181,7 +184,7 @@ export class AuthService {
     });
   }
 
-  private handleError = (error: any) => {
+  private handleError = (error: { status?: number; message?: string }) => {
     console.error('Auth service error:', error);
     
     if (error.status === 401) {
