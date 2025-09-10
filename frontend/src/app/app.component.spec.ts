@@ -9,9 +9,9 @@ import { RaiseInputComponent } from './raise-input/raise-input.component';
 
 describe('AppComponent', () => {
   beforeEach(() => TestBed.configureTestingModule({
-    imports: [RouterTestingModule, HttpClientTestingModule, FormsModule, RegisterPlayersComponent, GameTableComponent, RaiseInputComponent],
-    declarations: [AppComponent]
-}));
+    imports: [RouterTestingModule, HttpClientTestingModule, FormsModule, AppComponent, RegisterPlayersComponent, GameTableComponent, RaiseInputComponent],
+    declarations: []
+  }));
 
   it('should create the app', () => {
     const fixture = TestBed.createComponent(AppComponent);
